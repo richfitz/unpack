@@ -1,0 +1,11 @@
+Package: unpack
+Title: Unserialise R Objects
+Author: Rich FitzJohn
+Maintainer: Rich FitzJohn <rich.fitzjohn@gmail.com>
+Version: 0.0.1
+Description: Unserialise R objects, allowing for indexing within an
+  object.  This is a minimal re-implementation and exposing of the
+  underlying code in R's src/main/serialize.c.
+License: GPL-2
+Encoding: UTF-8
+Suggests: testthat
