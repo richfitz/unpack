@@ -13,7 +13,7 @@ typedef struct sexp_info {
   int flags;
   SEXPTYPE type;
   int levels;
-  //  int length;
+  R_xlen_t length;
   bool is_object;
   bool has_attr;
   bool has_tag;
@@ -24,21 +24,27 @@ typedef struct sexp_info {
 // because we're just going to try and read from this rather than
 // allocate it.  See R-ints for what the right thing to do here is.
 typedef struct stream_st {
-  size_t size;
-  size_t count;
+  R_xlen_t size;
+  R_xlen_t count;
   unsigned char *buf;
   serialisation_format format;
 } *stream_t;
 
-void stream_read_bytes(stream_t stream, void *buf, size_t len);
+void stream_read_bytes(stream_t stream, void *buf, R_xlen_t len);
 int stream_read_char(stream_t stream);
 int stream_read_integer(stream_t stream);
-void stream_advance(stream_t stream, size_t len);
+R_xlen_t stream_read_length(stream_t stream);
+void stream_read_vector_integer(stream_t stream, SEXP dest, R_xlen_t len);
+void stream_read_vector_real(stream_t stream, SEXP dest, R_xlen_t len);
+void stream_read_vector_complex(stream_t stream, SEXP dest, R_xlen_t len);
+void stream_advance(stream_t stream, R_xlen_t len);
 
 // The interface:
 SEXP r_unpack_all(SEXP x);
+SEXP r_unpack_inspect(SEXP x);
 
 // The internals
+void unpack_prepare(SEXP x, stream_t stream);
 SEXP unpack_unserialise(stream_t stream);
 SEXP unpack_read_item(stream_t stream);
 void unpack_check_format(stream_t stream);

@@ -4,6 +4,7 @@
 
 static const R_CallMethodDef call_methods[] = {
   {"Cunpack_all",                  (DL_FUNC) &r_unpack_all,                1},
+  {"Cunpack_inspect",              (DL_FUNC) &r_unpack_inspect,            1},
   {NULL,                           NULL,                                   0}
 };
 
