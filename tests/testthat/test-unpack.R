@@ -37,3 +37,9 @@ test_that("character", {
   expect_roundtrip(c("", NA_character_))
   expect_roundtrip(NA_character_)
 })
+
+test_that("list", {
+  expect_roundtrip(list())
+  expect_roundtrip(list("a"))
+  expect_roundtrip(list(list(list("a"))))
+})

@@ -132,10 +132,21 @@ SEXP stream_read_vector_character(stream_t stream, sexp_info *info) {
 }
 
 // ...no analog
+SEXP stream_read_vector_generic(stream_t stream, sexp_info *info) {
+  info->length = stream_read_length(stream);
+  SEXP s = PROTECT(allocVector(info->type, info->length));
+  stream->depth++;
+  for (R_xlen_t i = 0; i < info->length; ++i) {
+    SET_VECTOR_ELT(s, i, unpack_read_item(stream));
+  }
+  stream->depth--;
+  return s;
+}
+
+// ...no analog
 SEXP stream_read_charsxp(stream_t stream, sexp_info *info) {
-  // NOTE: *not* length because limited to 2^32 - 1
-  int length = stream_read_integer(stream);
-  info->length = length;
+  // NOTE: *not* read_length() because limited to 2^32 - 1
+  info->length = stream_read_integer(stream);
   SEXP s;
   if (info->length == -1) {
     PROTECT(s = NA_STRING);
@@ -310,7 +321,7 @@ SEXP unpack_read_item(stream_t stream) {
       break;
     case VECSXP:
     case EXPRSXP:
-      Rf_error("implement this");
+      s = stream_read_vector_generic(stream, &info);
       break;
     case BCODESXP:
     case CLASSREFSXP:
