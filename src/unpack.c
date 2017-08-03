@@ -7,7 +7,8 @@
 // InBytes
 void stream_read_bytes(stream_t stream, void *buf, R_xlen_t len) {
   if (stream->count + len > stream->size) {
-    Rf_error("stream overflow");
+    Rf_error("stream overflow (trying to set %d of %d)",
+             stream->count + len, stream->size);
   }
   memcpy(buf, stream->buf + stream->count, len);
   stream->count += len;
@@ -33,9 +34,22 @@ int stream_read_integer(stream_t stream) {
   case ASCII:
   case XDR:
   default:
-    Rf_error("not impemented");
+    Rf_error("not implemented (read_integer)");
   }
   return NA_INTEGER;
+}
+
+// InString
+void stream_read_string(stream_t stream, char *buf, int length) {
+  switch (stream->format) {
+  case BINARY:
+  case XDR:
+    stream_read_bytes(stream, buf, length);
+    break;
+  case ASCII:
+  default:
+    Rf_error("not implemented (read_string)");
+  }
 }
 
 // ReadLENGTH
@@ -70,7 +84,7 @@ void stream_read_vector_integer(stream_t stream, SEXP dest, R_xlen_t len) {
   case ASCII:
   case XDR:
   default:
-    Rf_error("not impemented");
+    Rf_error("not implemented (read_vector_integer)");
   }
 }
 
@@ -83,7 +97,7 @@ void stream_read_vector_real(stream_t stream, SEXP dest, R_xlen_t len) {
   case ASCII:
   case XDR:
   default:
-    Rf_error("not impemented");
+    Rf_error("not implemented (read_vector_real)");
   }
 }
 
@@ -96,8 +110,65 @@ void stream_read_vector_complex(stream_t stream, SEXP dest, R_xlen_t len) {
   case ASCII:
   case XDR:
   default:
-    Rf_error("not impemented");
+    Rf_error("not impemented (read_vector_complex)");
   }
+}
+
+// ...no analog
+void stream_read_vector_raw(stream_t stream, SEXP dest, R_xlen_t len) {
+  stream_read_bytes(stream, RAW(dest), (size_t)len);
+}
+
+// ...no analog
+SEXP stream_read_vector_character(stream_t stream, sexp_info *info) {
+  info->length = stream_read_length(stream);
+  SEXP s = PROTECT(allocVector(info->type, info->length));
+  stream->depth++;
+  for (R_xlen_t i = 0; i < info->length; ++i) {
+    SET_STRING_ELT(s, i, unpack_read_item(stream));
+  }
+  stream->depth--;
+  return s;
+}
+
+// ...no analog
+SEXP stream_read_charsxp(stream_t stream, sexp_info *info) {
+  // NOTE: *not* length because limited to 2^32 - 1
+  int length = stream_read_integer(stream);
+  info->length = length;
+  SEXP s;
+  if (info->length == -1) {
+    PROTECT(s = NA_STRING);
+  } else if (info->length < 1000) {
+    int enc = CE_NATIVE;
+    char cbuf[info->length + 1];
+    stream_read_string(stream, cbuf, info->length);
+    cbuf[info->length] = '\0';
+    // duplicated below
+    if (info->levels & UTF8_MASK) {
+      enc = CE_UTF8;
+    } else if (info->levels & LATIN1_MASK) {
+      enc = CE_LATIN1;
+    } else if (info->levels & BYTES_MASK) {
+      enc = CE_BYTES;
+    }
+    PROTECT(s = mkCharLenCE(cbuf, info->length, enc));
+  } else {
+    int enc = CE_NATIVE;
+    char *cbuf = CallocCharBuf(info->length);
+    // duplicated above
+    stream_read_string(stream, cbuf, info->length);
+    if (info->levels & UTF8_MASK) {
+      enc = CE_UTF8;
+    } else if (info->levels & LATIN1_MASK) {
+      enc = CE_LATIN1;
+    } else if (info->levels & BYTES_MASK) {
+      enc = CE_BYTES;
+    }
+    PROTECT(s = mkCharLenCE(cbuf, info->length, enc));
+    Free(cbuf);
+  }
+  return s;
 }
 
 void stream_advance(stream_t stream, R_xlen_t len) {
@@ -127,6 +198,7 @@ void unpack_prepare(SEXP x, stream_t stream) {
   stream->count = 0;
   stream->size = LENGTH(x);
   stream->buf = RAW(x);
+  stream->depth = 0;
 
   unpack_check_format(stream);
   unpack_check_version(stream);
@@ -215,8 +287,8 @@ SEXP unpack_read_item(stream_t stream) {
     case SPECIALSXP:
     case BUILTINSXP:
     case CHARSXP:
-      Rf_error("Can't unpack objects of type %s",
-               CHAR(type2str(info.type)));
+      s = stream_read_charsxp(stream, &info);
+      break;
     case LGLSXP:
     case INTSXP:
       info.length = stream_read_length(stream);
@@ -234,19 +306,25 @@ SEXP unpack_read_item(stream_t stream) {
       stream_read_vector_complex(stream, s, info.length);
       break;
     case STRSXP:
-      Rf_error("implement this");
+      s = stream_read_vector_character(stream, &info);
+      break;
     case VECSXP:
     case EXPRSXP:
       Rf_error("implement this");
+      break;
     case BCODESXP:
     case CLASSREFSXP:
     case GENERICREFSXP:
       Rf_error("Can't unpack objects of type %s",
                CHAR(type2str(info.type)));
     case RAWSXP:
-      Rf_error("implement this");
+      info.length = stream_read_length(stream);
+      PROTECT(s = allocVector(info.type, info.length));
+      stream_read_vector_raw(stream, s, info.length);
+      break;
     case S4SXP:
       Rf_error("implement this");
+      break;
     default:
       Rf_error("Can't unpack objects of type %s",
                CHAR(type2str(info.type)));

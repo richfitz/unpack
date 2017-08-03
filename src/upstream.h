@@ -21,3 +21,8 @@
 #define HAS_TAG_BIT_MASK (1 << 10)
 #define DECODE_LEVELS(v) ((v) >> 12)
 #define DECODE_TYPE(v) ((v) & 255)
+
+// From Defn.h
+#define BYTES_MASK (1<<1)
+#define LATIN1_MASK (1<<2)
+#define UTF8_MASK (1<<3)

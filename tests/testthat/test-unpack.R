@@ -5,15 +5,35 @@ test_that("scaffolding", {
   expect_error(unpack_all(""), "Expected a raw string")
 })
 
-test_that("simplest case", {
-  bytes1 <- serialize(NULL, NULL, xdr = FALSE)
-  bytes2 <- serialize(c(1L, 9L), NULL, xdr = FALSE)
-  bytes3 <- serialize(runif(4), NULL, xdr = FALSE)
-  unpack_inspect(bytes1)
-  unpack_inspect(bytes2)
-  unpack_inspect(bytes3)
+test_that("logical", {
+  expect_roundtrip(logical(0))
+  expect_roundtrip(c(NA, TRUE, FALSE))
+})
 
-  unpack_all(bytes1)
-  unpack_all(bytes2)
-  unpack_all(bytes3)
+test_that("integer", {
+  expect_roundtrip(integer(0))
+  expect_roundtrip(c(NA_integer_, 1L, 999L))
+})
+
+test_that("numeric", {
+  expect_roundtrip(numeric(0))
+  expect_roundtrip(c(NA_real_, runif(5)))
+})
+
+test_that("complex", {
+  expect_roundtrip(complex(0))
+  expect_roundtrip(c(1+2i, NA, runif(2)))
+})
+
+test_that("raw", {
+  expect_roundtrip(raw(0))
+  expect_roundtrip(charToRaw("hello"))
+})
+
+test_that("character", {
+  expect_roundtrip(character(0))
+  expect_roundtrip(c("hello"))
+  expect_roundtrip(c("hello", "world"))
+  expect_roundtrip(c("", NA_character_))
+  expect_roundtrip(NA_character_)
 })

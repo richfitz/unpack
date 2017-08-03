@@ -28,15 +28,23 @@ typedef struct stream_st {
   R_xlen_t count;
   unsigned char *buf;
   serialisation_format format;
+  int depth;
 } *stream_t;
 
-void stream_read_bytes(stream_t stream, void *buf, R_xlen_t len);
 int stream_read_char(stream_t stream);
 int stream_read_integer(stream_t stream);
+void stream_read_string(stream_t stream, char *buf, int length);
+
 R_xlen_t stream_read_length(stream_t stream);
+
+void stream_read_bytes(stream_t stream, void *buf, R_xlen_t len);
 void stream_read_vector_integer(stream_t stream, SEXP dest, R_xlen_t len);
 void stream_read_vector_real(stream_t stream, SEXP dest, R_xlen_t len);
 void stream_read_vector_complex(stream_t stream, SEXP dest, R_xlen_t len);
+void stream_read_vector_raw(stream_t stream, SEXP dest, R_xlen_t len);
+SEXP stream_read_vector_character(stream_t stream, sexp_info *info);
+SEXP stream_read_charsxp(stream_t stream, sexp_info *info);
+
 void stream_advance(stream_t stream, R_xlen_t len);
 
 // The interface:
