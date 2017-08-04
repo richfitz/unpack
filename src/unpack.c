@@ -144,6 +144,47 @@ SEXP stream_read_vector_generic(stream_t stream, sexp_info *info) {
 }
 
 // ...no analog
+SEXP stream_read_symbol(stream_t stream, sexp_info *info) {
+  stream->depth++;
+  SEXP s = PROTECT(unpack_read_item(stream));
+  stream->depth--;
+  // TODO: this _should_ be done with installTrChar which sets up the
+  // translations.  However, we don't have access to that!  I don't
+  // know if that will really hurt us if we don't have access to
+  // reference objects - I presume that this is primarily for when
+  // unserialising things that have come from packages with
+  // translation support perhaps?  In any case we should be able to
+  // re-implement
+  //
+  //   needsTranslation
+  //
+  // and warn if we're not able to do it.
+  s = Rf_installChar(s);
+  // In the R unserialise code we then add this symbol to the reference table.
+  //
+  // TODO: AddReadRef(ref_table, s);
+  UNPROTECT(1);
+  return s;
+}
+
+// ...no analog
+SEXP stream_read_pairlist(stream_t stream, sexp_info *info) {
+  // TODO: I do not know if this is API or not - if it's not the we
+  // have to do some serious work...
+  SEXP s = PROTECT(allocSExp(info->type));
+  SETLEVELS(s, info->levels);
+  SET_OBJECT(s, info->is_object);
+  stream->depth++;
+  SET_ATTRIB(s, info->has_attr ? unpack_read_item(stream) : R_NilValue);
+  SET_TAG(s, info->has_tag ? unpack_read_item(stream) : R_NilValue);
+  SETCAR(s, unpack_read_item(stream));
+  stream->depth--;
+  SETCDR(s, unpack_read_item(stream));
+  UNPROTECT(1);
+  return s;
+}
+
+// ...no analog
 SEXP stream_read_charsxp(stream_t stream, sexp_info *info) {
   // NOTE: *not* read_length() because limited to 2^32 - 1
   info->length = stream_read_integer(stream);
@@ -261,6 +302,7 @@ SEXP unpack_read_item(stream_t stream) {
   unpack_flags(stream_read_integer(stream), &info);
 
   switch (info.type) {
+    // 1. Some singletons:
   case NILVALUE_SXP:
     return R_NilValue;
   case EMPTYENV_SXP:
@@ -275,19 +317,32 @@ SEXP unpack_read_item(stream_t stream) {
     return R_MissingArg;
   case BASENAMESPACE_SXP:
     return R_BaseNamespace;
+    // 2. Reference objects
   case REFSXP:
   case PERSISTSXP:
-  case SYMSXP:
   case PACKAGESXP:
   case NAMESPACESXP:
   case ENVSXP:
+    Rf_error("Can't unpack objects of type %s",
+             CHAR(type2str(info.type)));
+    // n. Symbols
+  case SYMSXP:
+    return stream_read_symbol(stream, &info);
+    // 3. Dotted pair list
   case LISTSXP:
   case LANGSXP:
   case CLOSXP:
   case PROMSXP:
   case DOTSXP:
-    Rf_error("Can't unpack objects of type %s",
-             CHAR(type2str(info.type)));
+    /* This handling of dotted pair objects still uses recursion
+       on the CDR and so will overflow the PROTECT stack for long
+       lists.  The save format does permit using an iterative
+       approach; it just has to pass around the place to write the
+       CDR into when it is allocated.  It's more trouble than it
+       is worth to write the code to handle this now, but if it
+       becomes necessary we can do it without needing to change
+       the save format. */
+    return stream_read_pairlist(stream, &info);
   default:
     /* These break out of the switch to have their ATTR,
        LEVELS, and OBJECT fields filled in.  Each leaves the

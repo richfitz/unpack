@@ -43,3 +43,8 @@ test_that("list", {
   expect_roundtrip(list("a"))
   expect_roundtrip(list(list(list("a"))))
 })
+
+test_that("attributes", {
+  expect_roundtrip(structure(1:5, names = letters[1:5]))
+  expect_roundtrip(structure(1:5, names = letters[1:5], foo = "x"))
+})
