@@ -340,8 +340,22 @@ SEXP unpack_read_item(stream_t stream) {
       Rf_error("Can't unpack objects of type %s",
                CHAR(type2str(info.type)));
     }
+    if (info.type != CHARSXP) {
+      SETLEVELS(s, info.levels);
+    }
+    SET_OBJECT(s, info.is_object);
+    if (TYPEOF(s) == CHARSXP) {
+      if (info.has_attr) {
+        stream->depth++;
+        unpack_read_item(stream);
+        stream->depth--;
+      }
+    } else {
+      stream->depth++;
+      SET_ATTRIB(s, info.has_attr ? unpack_read_item(stream) : R_NilValue);
+      stream->depth--;
+    }
   }
-
   UNPROTECT(1);
   return s;
 }
