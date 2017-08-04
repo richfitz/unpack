@@ -38,10 +38,11 @@ void stream_read_string(stream_t stream, char *buf, int length);
 R_xlen_t stream_read_length(stream_t stream);
 
 void stream_read_bytes(stream_t stream, void *buf, R_xlen_t len);
-void stream_read_vector_integer(stream_t stream, SEXP dest, R_xlen_t len);
-void stream_read_vector_real(stream_t stream, SEXP dest, R_xlen_t len);
-void stream_read_vector_complex(stream_t stream, SEXP dest, R_xlen_t len);
-void stream_read_vector_raw(stream_t stream, SEXP dest, R_xlen_t len);
+
+SEXP stream_read_vector_integer(stream_t stream, sexp_info *info);
+SEXP stream_read_vector_real(stream_t stream, sexp_info *info);
+SEXP stream_read_vector_complex(stream_t stream, sexp_info *info);
+SEXP stream_read_vector_raw(stream_t stream, sexp_info *info);
 SEXP stream_read_vector_character(stream_t stream, sexp_info *info);
 SEXP stream_read_vector_generic(stream_t stream, sexp_info *info);
 SEXP stream_read_charsxp(stream_t stream, sexp_info *info);
@@ -56,6 +57,7 @@ SEXP r_unpack_inspect(SEXP x);
 void unpack_prepare(SEXP x, stream_t stream);
 SEXP unpack_unserialise(stream_t stream);
 SEXP unpack_read_item(stream_t stream);
+void unpack_add_attributes(SEXP s, sexp_info *info, stream_t stream);
 void unpack_check_format(stream_t stream);
 void unpack_check_version(stream_t stream);
 

@@ -76,47 +76,69 @@ R_xlen_t stream_read_length(stream_t stream) {
 }
 
 // InIntegerVec
-void stream_read_vector_integer(stream_t stream, SEXP dest, R_xlen_t len) {
+SEXP stream_read_vector_integer(stream_t stream, sexp_info *info) {
+  info->length = stream_read_length(stream);
+  SEXP s = PROTECT(allocVector(info->type, info->length));
   switch (stream->format) {
   case BINARY:
-    stream_read_bytes(stream, INTEGER(dest), (size_t)(sizeof(int) * len));
+    stream_read_bytes(stream, INTEGER(s), (size_t)(sizeof(int) * info->length));
     break;
   case ASCII:
   case XDR:
   default:
     Rf_error("not implemented (read_vector_integer)");
   }
+  unpack_add_attributes(s, info, stream);
+  UNPROTECT(1);
+  return s;
 }
 
 // InRealVec
-void stream_read_vector_real(stream_t stream, SEXP dest, R_xlen_t len) {
+SEXP stream_read_vector_real(stream_t stream, sexp_info *info) {
+  info->length = stream_read_length(stream);
+  SEXP s = PROTECT(allocVector(info->type, info->length));
   switch (stream->format) {
   case BINARY:
-    stream_read_bytes(stream, REAL(dest), (size_t)(sizeof(double) * len));
+    stream_read_bytes(stream, REAL(s),
+                      (size_t)(sizeof(double) * info->length));
     break;
   case ASCII:
   case XDR:
   default:
     Rf_error("not implemented (read_vector_real)");
   }
+  unpack_add_attributes(s, info, stream);
+  UNPROTECT(1);
+  return s;
 }
 
 // InComplexVec
-void stream_read_vector_complex(stream_t stream, SEXP dest, R_xlen_t len) {
+SEXP stream_read_vector_complex(stream_t stream, sexp_info *info) {
+  info->length = stream_read_length(stream);
+  SEXP s = PROTECT(allocVector(info->type, info->length));
   switch (stream->format) {
   case BINARY:
-    stream_read_bytes(stream, COMPLEX(dest), (size_t)(sizeof(Rcomplex) * len));
+    stream_read_bytes(stream, COMPLEX(s),
+                      (size_t)(sizeof(Rcomplex) * info->length));
     break;
   case ASCII:
   case XDR:
   default:
     Rf_error("not impemented (read_vector_complex)");
   }
+  unpack_add_attributes(s, info, stream);
+  UNPROTECT(1);
+  return s;
 }
 
 // ...no analog
-void stream_read_vector_raw(stream_t stream, SEXP dest, R_xlen_t len) {
-  stream_read_bytes(stream, RAW(dest), (size_t)len);
+SEXP stream_read_vector_raw(stream_t stream, sexp_info *info) {
+  info->length = stream_read_length(stream);
+  SEXP s = PROTECT(allocVector(info->type, info->length));
+  stream_read_bytes(stream, RAW(s), (size_t)info->length);
+  unpack_add_attributes(s, info, stream);
+  UNPROTECT(1);
+  return s;
 }
 
 // ...no analog
@@ -128,6 +150,8 @@ SEXP stream_read_vector_character(stream_t stream, sexp_info *info) {
     SET_STRING_ELT(s, i, unpack_read_item(stream));
   }
   stream->depth--;
+  unpack_add_attributes(s, info, stream);
+  UNPROTECT(1);
   return s;
 }
 
@@ -140,6 +164,8 @@ SEXP stream_read_vector_generic(stream_t stream, sexp_info *info) {
     SET_VECTOR_ELT(s, i, unpack_read_item(stream));
   }
   stream->depth--;
+  unpack_add_attributes(s, info, stream);
+  UNPROTECT(1);
   return s;
 }
 
@@ -169,8 +195,17 @@ SEXP stream_read_symbol(stream_t stream, sexp_info *info) {
 
 // ...no analog
 SEXP stream_read_pairlist(stream_t stream, sexp_info *info) {
-  // TODO: I do not know if this is API or not - if it's not the we
-  // have to do some serious work...
+  // From serialize.c:
+  /* This handling of dotted pair objects still uses recursion
+     on the CDR and so will overflow the PROTECT stack for long
+     lists.  The save format does permit using an iterative
+     approach; it just has to pass around the place to write the
+     CDR into when it is allocated.  It's more trouble than it
+     is worth to write the code to handle this now, but if it
+     becomes necessary we can do it without needing to change
+     the save format. */
+  // TODO: I do not know if allocSExp is API or not - if it's not the
+  // we have to do some serious work...
   SEXP s = PROTECT(allocSExp(info->type));
   SETLEVELS(s, info->levels);
   SET_OBJECT(s, info->is_object);
@@ -220,6 +255,8 @@ SEXP stream_read_charsxp(stream_t stream, sexp_info *info) {
     PROTECT(s = mkCharLenCE(cbuf, info->length, enc));
     Free(cbuf);
   }
+  unpack_add_attributes(s, info, stream);
+  UNPROTECT(1);
   return s;
 }
 
@@ -297,7 +334,6 @@ void unpack_check_version(stream_t stream) {
 
 // ReadItem
 SEXP unpack_read_item(stream_t stream) {
-  SEXP s;
   sexp_info info;
   unpack_flags(stream_read_integer(stream), &info);
 
@@ -317,7 +353,7 @@ SEXP unpack_read_item(stream_t stream) {
     return R_MissingArg;
   case BASENAMESPACE_SXP:
     return R_BaseNamespace;
-    // 2. Reference objects
+    // 2. Reference objects; none of these are handled (yet? ever?)
   case REFSXP:
   case PERSISTSXP:
   case PACKAGESXP:
@@ -325,94 +361,77 @@ SEXP unpack_read_item(stream_t stream) {
   case ENVSXP:
     Rf_error("Can't unpack objects of type %s",
              CHAR(type2str(info.type)));
-    // n. Symbols
+    // 3. Symbols
   case SYMSXP:
     return stream_read_symbol(stream, &info);
-    // 3. Dotted pair list
+    // 4. Dotted pair lists
   case LISTSXP:
   case LANGSXP:
   case CLOSXP:
   case PROMSXP:
   case DOTSXP:
-    /* This handling of dotted pair objects still uses recursion
-       on the CDR and so will overflow the PROTECT stack for long
-       lists.  The save format does permit using an iterative
-       approach; it just has to pass around the place to write the
-       CDR into when it is allocated.  It's more trouble than it
-       is worth to write the code to handle this now, but if it
-       becomes necessary we can do it without needing to change
-       the save format. */
     return stream_read_pairlist(stream, &info);
+    // 5. References
+  case EXTPTRSXP:  // +attr
+  case WEAKREFSXP: // +attr
+    // 6. Special functions
+  case SPECIALSXP: // +attr
+  case BUILTINSXP: // +attr
+    Rf_error("Can't unpack objects of type %s",
+             CHAR(type2str(info.type)));
+    // 7. Single string
+  case CHARSXP: // +attr
+    return stream_read_charsxp(stream, &info);
+    // 8. Vectors!
+  case LGLSXP: // +attr
+  case INTSXP: // +attr
+    return stream_read_vector_integer(stream, &info);
+  case REALSXP: // +attr
+    return stream_read_vector_real(stream, &info);
+  case CPLXSXP: // +attr
+    return stream_read_vector_complex(stream, &info);
+  case STRSXP: // +attr
+    return stream_read_vector_character(stream, &info);
+  case VECSXP: // +attr
+  case EXPRSXP: // +attr
+    return stream_read_vector_generic(stream, &info);
+    // 9. Weird shit
+  case BCODESXP: // +attr
+  case CLASSREFSXP: // +attr
+  case GENERICREFSXP: // +attr
+    Rf_error("Can't unpack objects of type %s",
+             CHAR(type2str(info.type)));
+    // 10. More vectors
+  case RAWSXP: // +attr
+    return stream_read_vector_raw(stream, &info);
+    // 11. S4
+  case S4SXP: // +attr
+    Rf_error("implement this");
+    break;
+    // 12. Unknown types
   default:
-    /* These break out of the switch to have their ATTR,
-       LEVELS, and OBJECT fields filled in.  Each leaves the
-       newly allocated value PROTECTed */
-    switch (info.type) {
-    case EXTPTRSXP:
-    case WEAKREFSXP:
-    case SPECIALSXP:
-    case BUILTINSXP:
-    case CHARSXP:
-      s = stream_read_charsxp(stream, &info);
-      break;
-    case LGLSXP:
-    case INTSXP:
-      info.length = stream_read_length(stream);
-      PROTECT(s = allocVector(info.type, info.length));
-      stream_read_vector_integer(stream, s, info.length);
-      break;
-    case REALSXP:
-      info.length = stream_read_length(stream);
-      PROTECT(s = allocVector(info.type, info.length));
-      stream_read_vector_real(stream, s, info.length);
-      break;
-    case CPLXSXP:
-      info.length = stream_read_length(stream);
-      PROTECT(s = allocVector(info.type, info.length));
-      stream_read_vector_complex(stream, s, info.length);
-      break;
-    case STRSXP:
-      s = stream_read_vector_character(stream, &info);
-      break;
-    case VECSXP:
-    case EXPRSXP:
-      s = stream_read_vector_generic(stream, &info);
-      break;
-    case BCODESXP:
-    case CLASSREFSXP:
-    case GENERICREFSXP:
       Rf_error("Can't unpack objects of type %s",
                CHAR(type2str(info.type)));
-    case RAWSXP:
-      info.length = stream_read_length(stream);
-      PROTECT(s = allocVector(info.type, info.length));
-      stream_read_vector_raw(stream, s, info.length);
-      break;
-    case S4SXP:
-      Rf_error("implement this");
-      break;
-    default:
-      Rf_error("Can't unpack objects of type %s",
-               CHAR(type2str(info.type)));
-    }
-    if (info.type != CHARSXP) {
-      SETLEVELS(s, info.levels);
-    }
-    SET_OBJECT(s, info.is_object);
-    if (TYPEOF(s) == CHARSXP) {
-      if (info.has_attr) {
-        stream->depth++;
-        unpack_read_item(stream);
-        stream->depth--;
-      }
-    } else {
+  }
+  Rf_error("noreturn");
+}
+
+void unpack_add_attributes(SEXP s, sexp_info *info, stream_t stream) {
+  if (info->type != CHARSXP) {
+    SETLEVELS(s, info->levels);
+  }
+  SET_OBJECT(s, info->is_object);
+  if (TYPEOF(s) == CHARSXP) {
+    if (info->has_attr) {
       stream->depth++;
-      SET_ATTRIB(s, info.has_attr ? unpack_read_item(stream) : R_NilValue);
+      unpack_read_item(stream);
       stream->depth--;
     }
+  } else {
+    stream->depth++;
+    SET_ATTRIB(s, info->has_attr ? unpack_read_item(stream) : R_NilValue);
+    stream->depth--;
   }
-  UNPROTECT(1);
-  return s;
 }
 
 void unpack_flags(int flags, sexp_info * info) {
