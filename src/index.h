@@ -28,7 +28,8 @@ typedef struct {
   size_t len;
 } rds_index;
 
-SEXP r_unpack_index(SEXP x);
+SEXP r_unpack_index(SEXP x, SEXP r_as_ptr);
+SEXP r_unpack_index_as_matrix(SEXP r_ptr);
 
 void index_init(rds_index *index, size_t n);
 void index_grow(rds_index *index);

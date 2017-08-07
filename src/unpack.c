@@ -267,9 +267,17 @@ void stream_advance(stream_t stream, R_xlen_t len) {
   stream->count += len;
 }
 
+void stream_move_to(stream_t stream, R_xlen_t pos) {
+  if (pos > stream->size) {
+    Rf_error("stream overflow");
+  }
+  stream->count = pos;
+}
+
 SEXP r_unpack_all(SEXP x) {
   struct stream_st stream;
   unpack_prepare(x, &stream);
+  // TODO: check that we have consumed all bytes
   return unpack_read_item(&stream);
 }
 

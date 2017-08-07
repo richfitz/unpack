@@ -60,6 +60,7 @@ SEXP stream_read_vector_generic(stream_t stream, sexp_info *info);
 SEXP stream_read_charsxp(stream_t stream, sexp_info *info);
 
 void stream_advance(stream_t stream, R_xlen_t len);
+void stream_move_to(stream_t stream, R_xlen_t len);
 
 // The interface:
 SEXP r_unpack_all(SEXP x);

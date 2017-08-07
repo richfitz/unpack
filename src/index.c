@@ -1,19 +1,47 @@
 #include "index.h"
+#include "util.h"
 
-SEXP r_unpack_index(SEXP x) {
+static void r_index_finalize(SEXP r_ptr);
+
+SEXP r_unpack_index(SEXP x, SEXP r_as_ptr) {
+  bool as_ptr = scalar_logical(r_as_ptr, "as_ptr");
   struct stream_st stream;
   unpack_prepare(x, &stream);
 
-  rds_index index;
-  index_init(&index, 100);
+  rds_index *index = Calloc(1, rds_index);
+  SEXP ret = PROTECT(R_MakeExternalPtr(index, R_NilValue, R_NilValue));
+  R_RegisterCFinalizer(ret, r_index_finalize);
 
-  index_build(&stream, &index, 0);
+  index_init(index, 100);
+  index_build(&stream, index, 0);
+  if (stream.count != stream.size) {
+    Rf_error("Did not consume all of raw vector: %d bytes left",
+             stream.size - stream.count);
+  }
 
-  SEXP ret = PROTECT(index_return(&index));
-  Free(index.index);
+  if (!as_ptr) {
+    ret = r_unpack_index_as_matrix(ret);
+  }
+
   UNPROTECT(1);
-
   return ret;
+}
+
+SEXP r_unpack_index_as_matrix(SEXP r_ptr) {
+  rds_index * index = (rds_index*)R_ExternalPtrAddr(r_ptr);
+  if (index == NULL) {
+    Rf_error("index has been freed; can't use!");
+  }
+  return index_return(index);
+}
+
+void r_index_finalize(SEXP r_ptr) {
+  rds_index * index = (rds_index*)R_ExternalPtrAddr(r_ptr);
+  if (index == NULL) {
+    Free(index->index);
+    Free(index);
+    R_ClearExternalPtr(r_ptr);
+  }
 }
 
 void index_init(rds_index *index, size_t n) {
@@ -280,7 +308,9 @@ void index_pairlist(stream_t stream, rds_index *index, size_t id) {
   if (info->has_tag) {
     index_build(stream, index, id);
   }
+  index_build(stream, index, id); // car
+  stream->depth--;
   info->start_data = stream->count;
-  index_build(stream, index, id);
+  index_build(stream, index, id); // cdr
   info->end = stream->count;
 }
