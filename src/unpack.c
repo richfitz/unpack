@@ -279,6 +279,138 @@ SEXP r_unpack_inspect(SEXP x) {
   return unpack_inspect_item(&stream);
 }
 
+SEXP r_sexptypes() {
+  size_t n = 35;
+  SEXP nms = PROTECT(allocVector(STRSXP, n));
+  SEXP ret = PROTECT(allocVector(INTSXP, n));
+  setAttrib(ret, R_NamesSymbol, nms);
+  int *v = INTEGER(ret);
+
+  size_t i = 0;
+
+  v[i] = SYMSXP; // 1
+  SET_STRING_ELT(nms, i++, mkChar("SYMSXP"));
+  v[i] = LISTSXP; // 2
+  SET_STRING_ELT(nms, i++, mkChar("LISTSXP"));
+  v[i] = CLOSXP; // 3
+  SET_STRING_ELT(nms, i++, mkChar("CLOSXP"));
+  v[i] = ENVSXP; // 4
+  SET_STRING_ELT(nms, i++, mkChar("ENVSXP"));
+  v[i] = PROMSXP; // 5
+  SET_STRING_ELT(nms, i++, mkChar("PROMSXP"));
+  v[i] = LANGSXP; // 6
+  SET_STRING_ELT(nms, i++, mkChar("LANGSXP"));
+  v[i] = SPECIALSXP; // 7
+  SET_STRING_ELT(nms, i++, mkChar("SPECIALSXP"));
+  v[i] = BUILTINSXP; // 8
+  SET_STRING_ELT(nms, i++, mkChar("BUILTINSXP"));
+  v[i] = CHARSXP; // 9
+  SET_STRING_ELT(nms, i++, mkChar("CHARSXP"));
+  v[i] = LGLSXP; // 10
+  SET_STRING_ELT(nms, i++, mkChar("LGLSXP"));
+  v[i] = INTSXP; // 13
+  SET_STRING_ELT(nms, i++, mkChar("INTSXP"));
+  v[i] = REALSXP; // 14
+  SET_STRING_ELT(nms, i++, mkChar("REALSXP"));
+  v[i] = CPLXSXP; // 15
+  SET_STRING_ELT(nms, i++, mkChar("CPLXSXP"));
+  v[i] = STRSXP; // 16
+  SET_STRING_ELT(nms, i++, mkChar("STRSXP"));
+  v[i] = DOTSXP; // 17
+  SET_STRING_ELT(nms, i++, mkChar("DOTSXP"));
+  v[i] = VECSXP; // 19
+  SET_STRING_ELT(nms, i++, mkChar("VECSXP"));
+  v[i] = EXPRSXP; // 20
+  SET_STRING_ELT(nms, i++, mkChar("EXPRSXP"));
+  v[i] = BCODESXP; // 21
+  SET_STRING_ELT(nms, i++, mkChar("BCODESXP"));
+  v[i] = EXTPTRSXP; // 22
+  SET_STRING_ELT(nms, i++, mkChar("EXTPTRSXP"));
+  v[i] = WEAKREFSXP; // 23
+  SET_STRING_ELT(nms, i++, mkChar("WEAKREFSXP"));
+  v[i] = RAWSXP; // 24
+  SET_STRING_ELT(nms, i++, mkChar("RAWSXP"));
+  v[i] = S4SXP; // 25
+  SET_STRING_ELT(nms, i++, mkChar("S4SXP"));
+  v[i] = BASEENV_SXP; // 241
+  SET_STRING_ELT(nms, i++, mkChar("BASEENV"));
+  v[i] = EMPTYENV_SXP; // 242
+  SET_STRING_ELT(nms, i++, mkChar("EMPTYENV"));
+  v[i] = GENERICREFSXP; // 245
+  SET_STRING_ELT(nms, i++, mkChar("GENERICREFSXP"));
+  v[i] = CLASSREFSXP; // 246
+  SET_STRING_ELT(nms, i++, mkChar("CLASSREFSXP"));
+  v[i] = PERSISTSXP; // 247
+  SET_STRING_ELT(nms, i++, mkChar("PERSISTSXP"));
+  v[i] = PACKAGESXP; // 248
+  SET_STRING_ELT(nms, i++, mkChar("PACKAGESXP"));
+  v[i] = NAMESPACESXP; // 249
+  SET_STRING_ELT(nms, i++, mkChar("NAMESPACESXP"));
+  v[i] = BASENAMESPACE_SXP; // 250
+  SET_STRING_ELT(nms, i++, mkChar("BASENAMESPACE"));
+  v[i] = MISSINGARG_SXP; // 251
+  SET_STRING_ELT(nms, i++, mkChar("MISSINGARG"));
+  v[i] = UNBOUNDVALUE_SXP; // 252
+  SET_STRING_ELT(nms, i++, mkChar("UNBOUNDVALUE"));
+  v[i] = GLOBALENV_SXP; // 253
+  SET_STRING_ELT(nms, i++, mkChar("GLOBALENV"));
+  v[i] = NILVALUE_SXP; // 254
+  SET_STRING_ELT(nms, i++, mkChar("NILVALUE"));
+  v[i] = REFSXP; // 255
+  SET_STRING_ELT(nms, i++, mkChar("REFSXP"));
+
+  UNPROTECT(2);
+  return ret;
+}
+
+SEXP r_to_sexptype(SEXP x) {
+  int * v = INTEGER(x);
+  SEXP ret = PROTECT(allocVector(STRSXP, length(x)));
+  for (R_xlen_t i = 0; i < length(x); ++i) {
+    const char *name = NULL;
+    switch(v[i]) {
+    case SYMSXP:            name = "SYMSXP";        break;
+    case LISTSXP:           name = "LISTSXP";       break;
+    case CLOSXP:            name = "CLOSXP";        break;
+    case ENVSXP:            name = "ENVSXP";        break;
+    case PROMSXP:           name = "PROMSXP";       break;
+    case LANGSXP:           name = "LANGSXP";       break;
+    case SPECIALSXP:        name = "SPECIALSXP";    break;
+    case BUILTINSXP:        name = "BUILTINSXP";    break;
+    case CHARSXP:           name = "CHARSXP";       break;
+    case LGLSXP:            name = "LGLSXP";        break;
+    case INTSXP:            name = "INTSXP";        break;
+    case REALSXP:           name = "REALSXP";       break;
+    case CPLXSXP:           name = "CPLXSXP";       break;
+    case STRSXP:            name = "STRSXP";        break;
+    case DOTSXP:            name = "DOTSXP";        break;
+    case VECSXP:            name = "VECSXP";        break;
+    case EXPRSXP:           name = "EXPRSXP";       break;
+    case BCODESXP:          name = "BCODESXP";      break;
+    case EXTPTRSXP:         name = "EXTPTRSXP";     break;
+    case WEAKREFSXP:        name = "WEAKREFSXP";    break;
+    case RAWSXP:            name = "RAWSXP";        break;
+    case S4SXP:             name = "S4SXP";         break;
+    case BASEENV_SXP:       name = "BASEENV";       break;
+    case EMPTYENV_SXP:      name = "EMPTYENV";      break;
+    case GENERICREFSXP:     name = "GENERICREFSXP"; break;
+    case CLASSREFSXP:       name = "CLASSREFSXP";   break;
+    case PERSISTSXP:        name = "PERSISTSXP";    break;
+    case PACKAGESXP:        name = "PACKAGESXP";    break;
+    case NAMESPACESXP:      name = "NAMESPACESXP";  break;
+    case BASENAMESPACE_SXP: name = "BASENAMESPACE"; break;
+    case MISSINGARG_SXP:    name = "MISSINGARG";    break;
+    case UNBOUNDVALUE_SXP:  name = "UNBOUNDVALUE";  break;
+    case GLOBALENV_SXP:     name = "GLOBALENV";     break;
+    case NILVALUE_SXP:      name = "NILVALUE";      break;
+    case REFSXP:            name = "REFSXP";        break;
+    }
+    SET_STRING_ELT(ret, i, name == NULL ? NA_STRING : mkChar(name));
+  }
+  UNPROTECT(1);
+  return ret;
+}
+
 void unpack_prepare(SEXP x, stream_t stream) {
   if (TYPEOF(x) != RAWSXP) {
     Rf_error("Expected a raw string");
@@ -445,8 +577,7 @@ void unpack_flags(int flags, sexp_info * info) {
 
 SEXP unpack_inspect_item(stream_t stream) {
   sexp_info info;
-  unpack_flags(stream_read_integer(stream), &info);
-
+  unpack_sexp_info(stream, &info);
   if (info.type > 240) {
     switch (info.type) {
     case NILVALUE_SXP:
@@ -455,26 +586,6 @@ SEXP unpack_inspect_item(stream_t stream) {
       info.type = ENVSXP; break;
     }
   }
-
-  switch (info.type) {
-  case NILSXP:
-    info.length = 0;
-    break;
-  case CHARSXP:
-  case LGLSXP:
-  case INTSXP:
-  case REALSXP:
-  case CPLXSXP:
-  case STRSXP:
-  case EXPRSXP:
-  case VECSXP:
-  case RAWSXP:
-    info.length = stream_read_length(stream);
-    break;
-  default:
-    info.length = 1;
-    break;
-  };
 
   size_t n = 7;
   SEXP ret = PROTECT(allocVector(VECSXP, n));
@@ -498,4 +609,33 @@ SEXP unpack_inspect_item(stream_t stream) {
 
   UNPROTECT(2);
   return ret;
+}
+
+void unpack_sexp_info(stream_t stream, sexp_info *info) {
+  unpack_flags(stream_read_integer(stream), info);
+
+  // These are all the types with a concept of length.  Reading the
+  // length does move the stream along to the beginning of the data
+  // element of the sexp.
+  switch (info->type) {
+  case CHARSXP:
+  case LGLSXP:
+  case INTSXP:
+  case REALSXP:
+  case CPLXSXP:
+  case STRSXP:
+  case EXPRSXP:
+  case VECSXP:
+  case RAWSXP:
+    info->length = stream_read_length(stream);
+    break;
+  case NILVALUE_SXP:
+    info->length = 0;
+    break;
+  default:
+    // This is of course incorrect for dotted lists but we can't at
+    // this point compute the length.
+    info->length = 1;
+    break;
+  };
 }

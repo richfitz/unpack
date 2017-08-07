@@ -1,2 +1,5 @@
 ##' @useDynLib unpack, .registration = TRUE
-NULL
+sexptypes <- NULL
+.onLoad <- function(...) {
+  sexptypes <<- .Call(Csexptypes)
+}

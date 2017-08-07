@@ -1,10 +1,14 @@
 #include "unpack.h"
+#include "index.h"
 #include <R_ext/Rdynload.h>
 #include <Rversion.h>
 
 static const R_CallMethodDef call_methods[] = {
   {"Cunpack_all",                  (DL_FUNC) &r_unpack_all,                1},
   {"Cunpack_inspect",              (DL_FUNC) &r_unpack_inspect,            1},
+  {"Cunpack_index",                (DL_FUNC) &r_unpack_index,              1},
+  {"Csexptypes",                   (DL_FUNC) &r_sexptypes,                 0},
+  {"Cto_sexptype",                 (DL_FUNC) &r_to_sexptype,               1},
   {NULL,                           NULL,                                   0}
 };
 
