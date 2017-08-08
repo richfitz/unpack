@@ -39,6 +39,16 @@ int stream_read_integer(stream_t stream) {
   return NA_INTEGER;
 }
 
+// InRefIndex
+int stream_read_ref_index(stream_t stream, sexp_info *info) {
+  int i = UNPACK_REF_INDEX(info->flags);
+  if (i == 0) {
+    return stream_read_integer(stream);
+  } else {
+    return i;
+  }
+}
+
 // InString
 void stream_read_string(stream_t stream, char *buf, int length) {
   switch (stream->format) {
@@ -186,9 +196,7 @@ SEXP stream_read_symbol(stream_t stream, sexp_info *info) {
   //
   // and warn if we're not able to do it.
   s = Rf_installChar(s);
-  // In the R unserialise code we then add this symbol to the reference table.
-  //
-  // TODO: AddReadRef(ref_table, s);
+  add_read_ref(stream->ref_table, s);
   UNPROTECT(1);
   return s;
 }
@@ -260,6 +268,12 @@ SEXP stream_read_charsxp(stream_t stream, sexp_info *info) {
   return s;
 }
 
+// ...no analog
+SEXP stream_read_ref(stream_t stream, sexp_info *info) {
+  int index = stream_read_ref_index(stream, info);
+  return get_read_ref(stream->ref_table, index);
+}
+
 void stream_advance(stream_t stream, R_xlen_t len) {
   if (stream->count + len > stream->size) {
     Rf_error("stream overflow");
@@ -277,8 +291,14 @@ void stream_move_to(stream_t stream, R_xlen_t pos) {
 SEXP r_unpack_all(SEXP x) {
   struct stream_st stream;
   unpack_prepare(x, &stream);
-  // TODO: check that we have consumed all bytes
-  return unpack_read_item(&stream);
+  stream.ref_table = PROTECT(init_read_ref());
+  SEXP obj = unpack_read_item(&stream);
+  if (stream.count != stream.size) {
+    Rf_error("Did not consume all of raw vector: %d bytes left",
+             stream.size - stream.count);
+  }
+  UNPROTECT(1);
+  return obj;
 }
 
 SEXP r_unpack_inspect(SEXP x) {
@@ -495,6 +515,8 @@ SEXP unpack_read_item(stream_t stream) {
     return R_BaseNamespace;
     // 2. Reference objects; none of these are handled (yet? ever?)
   case REFSXP:
+    // something like this:
+    return stream_read_ref(stream, &info);
   case PERSISTSXP:
   case PACKAGESXP:
   case NAMESPACESXP:
@@ -646,4 +668,56 @@ void unpack_sexp_info(stream_t stream, sexp_info *info) {
     info->length = 1;
     break;
   };
+}
+
+// MakeReadRefTable
+#define INITIAL_REFREAD_TABLE_SIZE 182
+SEXP init_read_ref() {
+  SEXP data = allocVector(VECSXP, INITIAL_REFREAD_TABLE_SIZE);
+  SET_TRUELENGTH(data, 0);
+  return CONS(data, R_NilValue);
+}
+
+// GetReadRef
+SEXP get_read_ref(SEXP table, int index) {
+  int i = index - 1;
+  SEXP data = CAR(table);
+  if (i < 0 || i >= LENGTH(data)) {
+    Rf_error("reference index out of range");
+  }
+  return VECTOR_ELT(data, i);
+}
+
+// AddReadRef
+void add_read_ref(SEXP table, SEXP value) {
+  // used by:
+  // - [x] SYMSXP
+  // - [ ] PERSISTSXP
+  // - [ ] PACKAGESXP
+  // - [ ] NAMESPACESXP
+  // - [ ] ENVSXP
+  // - [ ] EXTPTRSXP
+  // - [ ] WEAKREFSXP
+  //
+  // TODO: I do not think that the growth bits that I have here are R
+  // API; TRUELENGTH and SET_TRUELENGTH - it might be instructive to
+  // search github.com/cran for usage.
+  SEXP data = CAR(table);
+  int count = TRUELENGTH(data) + 1;
+  if (count >= LENGTH(data)) {
+    int len;
+    SEXP newdata;
+
+    PROTECT(value);
+    len = 2 * count;
+    newdata = allocVector(VECSXP, len);
+    for (int i = 0; i < LENGTH(data); i++) {
+      SET_VECTOR_ELT(newdata, i, VECTOR_ELT(data, i));
+    }
+    SETCAR(table, newdata);
+    data = newdata;
+    UNPROTECT(1);
+  }
+  SET_TRUELENGTH(data, count);
+  SET_VECTOR_ELT(data, count - 1, value);
 }

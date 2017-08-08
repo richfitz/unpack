@@ -41,10 +41,12 @@ typedef struct stream_st {
   unsigned char *buf;
   serialisation_format format;
   int depth;
+  SEXP ref_table;
 } *stream_t;
 
 int stream_read_char(stream_t stream);
 int stream_read_integer(stream_t stream);
+int stream_read_ref_index(stream_t stream, sexp_info *info);
 void stream_read_string(stream_t stream, char *buf, int length);
 
 R_xlen_t stream_read_length(stream_t stream);
@@ -58,6 +60,7 @@ SEXP stream_read_vector_raw(stream_t stream, sexp_info *info);
 SEXP stream_read_vector_character(stream_t stream, sexp_info *info);
 SEXP stream_read_vector_generic(stream_t stream, sexp_info *info);
 SEXP stream_read_charsxp(stream_t stream, sexp_info *info);
+SEXP stream_read_ref(stream_t stream, sexp_info *info);
 
 void stream_advance(stream_t stream, R_xlen_t len);
 void stream_move_to(stream_t stream, R_xlen_t len);
@@ -79,5 +82,9 @@ void unpack_check_version(stream_t stream);
 SEXP unpack_inspect_item(stream_t stream);
 void unpack_flags(int flags, sexp_info * info);
 void unpack_sexp_info(stream_t stream, sexp_info *info);
+
+SEXP init_read_ref();
+SEXP get_read_ref(SEXP table, int index);
+void add_read_ref(SEXP table, SEXP value);
 
 #endif

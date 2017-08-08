@@ -21,6 +21,7 @@
 #define HAS_TAG_BIT_MASK (1 << 10)
 #define DECODE_LEVELS(v) ((v) >> 12)
 #define DECODE_TYPE(v) ((v) & 255)
+#define UNPACK_REF_INDEX(i) ((i) >> 8)
 
 // From Defn.h
 #define BYTES_MASK (1<<1)
