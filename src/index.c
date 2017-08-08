@@ -51,6 +51,9 @@ void index_init(rds_index *index, size_t n) {
 void index_grow(rds_index *index) {
   if (index->index != NULL) {
     index->len *= 2;
+    // NOTE: when doing grow, we need to re-lookup all indices that
+    // are live.  So index_build could return true/false or we need to
+    // be careful when storing pointers from index.
   }
   index->index = (sexp_info*) Realloc(index->index, index->len, sexp_info);
 }
@@ -234,8 +237,8 @@ void index_symbol(stream_t stream, rds_index *index, size_t id) {
   stream->depth++;
   index_build(stream, index, id);
   stream->depth--;
-  info->start_attr = stream->count;
-  info->end = stream->count;
+  index->index[id].start_attr = stream->count;
+  index->index[id].end = stream->count;
 }
 
 void index_vector_character(stream_t stream, rds_index *index, size_t id) {
@@ -269,15 +272,14 @@ void index_attributes(stream_t stream, rds_index *index, size_t id) {
     index_build(stream, index, id);
     stream->depth--;
   }
-  info->end = stream->count;
+  index->index[id].end = stream->count;
 }
 
 void index_pairlist(stream_t stream, rds_index *index, size_t id) {
-  sexp_info *info = index->index + id;
-  info->length = 1; // pairlist always have one element
-  info->start_attr = stream->count;
+  index->index[id].length = 1; // pairlist always have one element
+  index->index[id].start_attr = stream->count;
   stream->depth++;
-  if (info->has_attr) {
+  if (index->index[id].has_attr) {
     index_build(stream, index, id);
   }
   // We index this but it will not sensibly appear in some ways.  We
@@ -286,14 +288,14 @@ void index_pairlist(stream_t stream, rds_index *index, size_t id) {
   // getting the attribute out will be easy but not the cdr.  I'm not
   // really sure that this is rich enough to help us index into
   // pairlists actually.
-  if (info->has_tag) {
+  if (index->index[id].has_tag) {
     index_build(stream, index, id);
   }
   index_build(stream, index, id); // car
   stream->depth--;
-  info->start_data = stream->count;
+  index->index[id].start_data = stream->count;
   index_build(stream, index, id); // cdr
-  info->end = stream->count;
+  index->index[id].end = stream->count;
 }
 
 rds_index * get_index(SEXP r_ptr, bool closed_error) {
