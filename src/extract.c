@@ -8,19 +8,66 @@
 SEXP r_unpack_extract(SEXP r_x, SEXP r_index, SEXP r_id) {
   rds_index * index = get_index(r_index, true);
   size_t id = scalar_size(r_id, "id");
+  struct stream_st stream;
+  unpack_prepare(r_x, &stream);
+  return unpack_extract(&stream, index, id);
+}
+
+SEXP unpack_extract(stream_t stream, rds_index * index, size_t id) {
+  if (id > (index->id - 1)) {
+    Rf_error("id is out of bounds (%d / %d)", id, index->id - 1);
+  }
+  if (id > 0) {
+    sexp_info *info = index->index + id;
+    stream_move_to(stream, info->start_object);
+  }
+  return unpack_read_item(stream);
+}
+
+// like `[[` - extract *one* element
+SEXP r_unpack_extract_element(SEXP r_x, SEXP r_index, SEXP r_id, SEXP r_i,
+                              SEXP r_error_if_missing) {
+  rds_index * index = get_index(r_index, true);
+  size_t id = scalar_size(r_id, "id");
+  size_t i = scalar_size(r_i, "i");
+  if (i == 0) {
+    Rf_error("Expected a nonzero positive size for 'i'");
+  }
+  struct stream_st stream;
+  unpack_prepare(r_x, &stream);
+  bool error_if_missing =
+    scalar_logical(r_error_if_missing, "error_if_missing");
+
+  return unpack_extract_element(&stream, index, id, i, error_if_missing);
+}
+
+SEXP unpack_extract_element(stream_t stream, rds_index * index,
+                            size_t id, size_t i, bool error_if_missing) {
   if (id > (index->id - 1)) {
     Rf_error("id is out of bounds");
   }
-
-  struct stream_st stream;
-  unpack_prepare(r_x, &stream);
-
-  if (id > 0) {
-    sexp_info *info = index->index + id;
-    stream_move_to(&stream, info->start_object);
+  sexp_info * info = index->index + id;
+  switch(info->type) {
+  case VECSXP:
+    return unpack_extract_element_list(stream, index, id, i, error_if_missing);
+  default:
+    Rf_error("Cannot extract element from a %s", type2str(info->type));
   }
+}
 
-  return unpack_read_item(&stream);
+SEXP unpack_extract_element_list(stream_t stream, rds_index * index,
+                                 size_t id, size_t i, bool error_if_missing) {
+  int j = index_find_nth_child(index, id, i); // NOTE: naturally base-1
+  SEXP ret = R_NilValue;
+  if (j < 0) {
+    if (error_if_missing) {
+      Rf_error("Index %d out of bounds; must be on [1, %d]",
+               i, index->index[i].length);
+    }
+  } else {
+    ret = unpack_extract(stream, index, j);
+  }
+  return ret;
 }
 
 size_t index_find_id(rds_index * index, int at, size_t start_id) {
@@ -47,7 +94,7 @@ size_t index_find_car(rds_index * index, int id) {
   if (info->type != LISTSXP) {
     Rf_error("index_find_car requres a LISTSXP");
   }
-  return index_find_nth_daughter(index, id, 1 + info->has_attr + info->has_tag);
+  return index_find_nth_child(index, id, 1 + info->has_attr + info->has_tag);
 }
 
 size_t index_find_cdr(rds_index * index, int id) {
@@ -55,12 +102,12 @@ size_t index_find_cdr(rds_index * index, int id) {
   if (info->type != LISTSXP) {
     Rf_error("index_find_cdr requres a LISTSXP");
   }
-  return index_find_nth_daughter(index, id, 2 + info->has_attr + info->has_tag);
+  return index_find_nth_child(index, id, 2 + info->has_attr + info->has_tag);
 }
 
-int index_find_nth_daughter(rds_index *index, size_t id, size_t n) {
+int index_find_nth_child(rds_index *index, size_t id, size_t n) {
   size_t found = 0;
-  size_t i = id;
+  size_t i = id, last = index->id - 1;
   R_xlen_t end = index->index[i].end;
   sexp_info *info = index->index + id;
   do {
@@ -72,7 +119,7 @@ int index_find_nth_daughter(rds_index *index, size_t id, size_t n) {
     if (found == n) {
       return i;
     }
-  } while(info->start_object < end);
+  } while(i < last && info->start_object < end);
   return -1;
 }
 
@@ -85,9 +132,9 @@ int index_find_attribute(rds_index *index, size_t id, const char *name,
   while (info_attr->type == LISTSXP) {
     // TODO: looks like I am off by one here
     size_t id_name_sym =
-      index_find_nth_daughter(index, id_attr, info_attr->has_attr + 1);
+      index_find_nth_child(index, id_attr, info_attr->has_attr + 1);
     size_t id_name =
-      index_find_nth_daughter(index, id_name_sym, 1);
+      index_find_nth_child(index, id_name_sym, 1);
     // better here would be to use read_charsxp with the counter moved
     // along to start_object to avoid reading two bytes
     if (index->index[id_name].length == (R_xlen_t)len) {
@@ -128,12 +175,12 @@ SEXP r_index_find_cdr(SEXP r_index, SEXP r_id) {
   size_t id = scalar_size(r_id, "id");
   return ScalarInteger(index_find_cdr(index, id));
 }
-SEXP r_index_find_nth_daughter(SEXP r_index, SEXP r_id, SEXP r_n) {
+SEXP r_index_find_nth_child(SEXP r_index, SEXP r_id, SEXP r_n) {
   rds_index *index = get_index(r_index, true);
   size_t
     id = scalar_size(r_id, "id"),
     n = scalar_size(r_n, "n");
-  return ScalarInteger(index_find_nth_daughter(index, id, n));
+  return ScalarInteger(index_find_nth_child(index, id, n));
 }
 
 SEXP r_index_find_attribute(SEXP r_index, SEXP r_id, SEXP r_name, SEXP r_x) {

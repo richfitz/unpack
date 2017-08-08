@@ -21,6 +21,9 @@ to_sexptype <- function(x) {
 unpack_extract <- function(x, index, id) {
   .Call(Cunpack_extract, x, index, id)
 }
+unpack_extract_element <- function(x, index, id, i, error_if_missing = TRUE) {
+  .Call(Cunpack_extract_element, x, index, id, i, error_if_missing)
+}
 
 index_find_id <- function(index, at, start_id = 0L) {
   .Call(Cindex_find_id, index, at, start_id)
@@ -34,8 +37,8 @@ index_find_car <- function(index, id) {
 index_find_cdr <- function(index, id) {
   .Call(Cindex_find_cdr, index, id)
 }
-index_find_nth_daughter <- function(index, id, n) {
-  .Call(Cindex_find_nth_daughter, index, id, n)
+index_find_nth_child <- function(index, id, n) {
+  .Call(Cindex_find_nth_child, index, id, n)
 }
 index_find_attribute <- function(index, id, name, x) {
   .Call(Cindex_find_attribute, index, id, name, x)
