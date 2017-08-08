@@ -70,7 +70,7 @@ SEXP unpack_extract_element_list(stream_t stream, rds_index * index,
   return ret;
 }
 
-size_t index_find_id(rds_index * index, int at, size_t start_id) {
+int index_find_id(rds_index * index, int at, size_t start_id) {
   size_t i = start_id;
   R_xlen_t start_at = index->index[i].start_object,
     end = index->index[i].end;
@@ -84,12 +84,12 @@ size_t index_find_id(rds_index * index, int at, size_t start_id) {
   return -1;
 }
 
-size_t index_find_attributes(rds_index * index, int id) {
+int index_find_attributes(rds_index * index, int id) {
   sexp_info *info = index->index + id;
   return info->has_attr ? index_find_id(index, info->start_attr, id) : -1;
 }
 
-size_t index_find_car(rds_index * index, int id) {
+int index_find_car(rds_index * index, int id) {
   sexp_info *info = index->index + id;
   if (info->type != LISTSXP) {
     Rf_error("index_find_car requres a LISTSXP");
@@ -97,7 +97,7 @@ size_t index_find_car(rds_index * index, int id) {
   return index_find_nth_child(index, id, 1 + info->has_attr + info->has_tag);
 }
 
-size_t index_find_cdr(rds_index * index, int id) {
+int index_find_cdr(rds_index * index, int id) {
   sexp_info *info = index->index + id;
   if (info->type != LISTSXP) {
     Rf_error("index_find_cdr requres a LISTSXP");

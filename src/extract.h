@@ -10,10 +10,10 @@ SEXP unpack_extract_element(stream_t stream, rds_index * index,
 SEXP unpack_extract_element_list(stream_t stream, rds_index * index,
                                  size_t id, size_t i, bool error_if_missing);
 
-size_t index_find_attributes(rds_index * index, int id);
-size_t index_find_id(rds_index * index, int at, size_t start_id);
-size_t index_find_car(rds_index * index, int id);
-size_t index_find_cdr(rds_index * index, int id);
+int index_find_attributes(rds_index * index, int id);
+int index_find_id(rds_index * index, int at, size_t start_id);
+int index_find_car(rds_index * index, int id);
+int index_find_cdr(rds_index * index, int id);
 int index_find_nth_child(rds_index *index, size_t id, size_t n);
 int index_find_attribute(rds_index *index, size_t id, const char *name,
                          stream_t stream);
