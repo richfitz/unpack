@@ -141,7 +141,6 @@ test_that("attributes", {
                unname(sexptypes[["CHARSXP"]]))
   expect_equal(xb[(idx[j, "start_data"] + 1L):(idx[j, "start_attr"])],
                charToRaw("names"))
-
 })
 
 test_that("multiple attributes", {
@@ -152,35 +151,21 @@ test_that("multiple attributes", {
   idx_ptr <- unpack_index(xb, TRUE)
   idx <- unpack_index_as_matrix(idx_ptr)
 
-  ## We have three children here.  For dotted lists, attributes come
-  ## first (and tag), then cdr then car
-  idx[idx[, "id"] == 1L, ]
-  i <- which(idx[, "parent"] == 1L)
+  ## Hell yes:
+  i_c <- index_find_attribute(idx_ptr, 0L, "class", xb)
+  i_n <- index_find_attribute(idx_ptr, 0L, "names", xb)
+  i_x <- index_find_attribute(idx_ptr, 0L, "x", xb)
+  expect_equal(i_c, 4L)
+  expect_equal(i_n, 9L)
+  expect_equal(i_x, NA_integer_)
 
-  to_sexptype(idx[i, "type"])
+  expect_identical(unpack_extract(xb, idx_ptr, i_c), class(x))
+  expect_identical(unpack_extract(xb, idx_ptr, i_n), names(x))
+})
 
-  ## This is the symbol
-  expect_equal(unname(idx[i[1], "type"]),
-               unname(sexptypes[["SYMSXP"]]))
-  j <- which(idx[, "parent"] == idx[i[1], "id"])
-  expect_equal(unname(idx[j, "type"]),
-               unname(sexptypes[["CHARSXP"]]))
-  expect_equal(xb[(idx[j, "start_data"] + 1L):(idx[j, "start_attr"])],
-               charToRaw("class"))
-
-  ## i[2] is a strsxp that holds the actual class name.
-  ## i[3] is a listsxp so we continue there
-
-  i2 <- which(idx[, "parent"] == i[[3]] - 1)
-  to_sexptype(idx[i2, "type"])
-  expect_equal(unname(idx[i2[1], "type"]),
-               unname(sexptypes[["SYMSXP"]]))
-  j <- which(idx[, "parent"] == idx[i2[1], "id"])
-  expect_equal(unname(idx[j, "type"]),
-               unname(sexptypes[["CHARSXP"]]))
-  expect_equal(xb[(idx[j, "start_data"] + 1L):(idx[j, "start_attr"])],
-               charToRaw("names"))
-
-  unpack_extract(xb, idx_ptr, i[2] - 1L)
-  unpack_extract(xb, idx_ptr, i2[2] - 1L)
+test_that("attributed attributes", {
+  x <- structure(pi, a = 1, bar = 2)
+  v <- structure("hello", x = x, y = TRUE)
+  idx <- unpack_index(serialize_binary(v))
+  idx[6, ]
 })

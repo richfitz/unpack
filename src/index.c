@@ -28,15 +28,11 @@ SEXP r_unpack_index(SEXP x, SEXP r_as_ptr) {
 }
 
 SEXP r_unpack_index_as_matrix(SEXP r_ptr) {
-  rds_index * index = (rds_index*)R_ExternalPtrAddr(r_ptr);
-  if (index == NULL) {
-    Rf_error("index has been freed; can't use!");
-  }
-  return index_return(index);
+  return index_return(get_index(r_ptr, true));
 }
 
 void r_index_finalize(SEXP r_ptr) {
-  rds_index * index = (rds_index*)R_ExternalPtrAddr(r_ptr);
+  rds_index * index = get_index(r_ptr, false);
   if (index == NULL) {
     Free(index->index);
     Free(index);
@@ -56,30 +52,15 @@ void index_grow(rds_index *index) {
   if (index->index != NULL) {
     index->len *= 2;
   }
-
   index->index = (sexp_info*) Realloc(index->index, index->len, sexp_info);
-
-  /*
-  const size_t m = (IDX_END + 1) * index->len;
-  const size_t len = m * index->len;
-  if (index->index == NULL) {
-    index->index = (int*) R_alloc(len, sizeof(int));
-  } else {
-    index->len *= 2;
-    int * prev = index->index;
-    index->index = (int*) R_alloc(m * index->len, sizeof(int));
-    memcpy(index->index, prev, len * sizeof(int));
-  }
-  */
 }
 
+// This is primarily for inspection in R.  Some care will be needed
+// where the sizes exceed 2^31 - 1; we can check that with looking at
+// the end.
 SEXP index_return(rds_index *index) {
   const size_t n = index->id, nc = 8;
 
-  // It's not clear if this is better done with a matrix or with a
-  // list that will be workable as a data.frame.  The other thing that
-  // needs toing is swapping out the int here for double when the
-  // length is long.
   SEXP ret = PROTECT(allocMatrix(INTSXP, n, nc));
   int
     *id           = INTEGER(ret),
@@ -313,4 +294,12 @@ void index_pairlist(stream_t stream, rds_index *index, size_t id) {
   info->start_data = stream->count;
   index_build(stream, index, id); // cdr
   info->end = stream->count;
+}
+
+rds_index * get_index(SEXP r_ptr, bool closed_error) {
+  rds_index * index = (rds_index*)R_ExternalPtrAddr(r_ptr);
+  if (closed_error && index == NULL) {
+    Rf_error("index has been freed; can't use!");
+  }
+  return index;
 }

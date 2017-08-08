@@ -10,6 +10,16 @@ static const R_CallMethodDef call_methods[] = {
   {"Cunpack_index",                (DL_FUNC) &r_unpack_index,              2},
   {"Cunpack_index_as_matrix",      (DL_FUNC) &r_unpack_index_as_matrix,    1},
   {"Cunpack_extract",              (DL_FUNC) &r_unpack_extract,            3},
+
+  // testing
+  {"Cindex_find_id",               (DL_FUNC) &r_index_find_id,             3},
+  {"Cindex_find_attributes",       (DL_FUNC) &r_index_find_attributes,     2},
+  {"Cindex_find_car",              (DL_FUNC) &r_index_find_car,            2},
+  {"Cindex_find_cdr",              (DL_FUNC) &r_index_find_cdr,            2},
+  {"Cindex_find_nth_daughter",     (DL_FUNC) &r_index_find_nth_daughter,   3},
+  {"Cindex_find_attribute",        (DL_FUNC) &r_index_find_attribute,      4},
+
+  // more
   {"Csexptypes",                   (DL_FUNC) &r_sexptypes,                 0},
   {"Cto_sexptype",                 (DL_FUNC) &r_to_sexptype,               1},
   {NULL,                           NULL,                                   0}
