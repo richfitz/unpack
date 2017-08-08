@@ -130,27 +130,63 @@ int index_find_attribute(rds_index *index, size_t id, const char *name,
   sexp_info *info_attr = index->index + id_attr;
   int ret = -1;
   while (info_attr->type == LISTSXP) {
-    // TODO: looks like I am off by one here
     size_t id_name_sym =
       index_find_nth_child(index, id_attr, info_attr->has_attr + 1);
     size_t id_name =
       index_find_nth_child(index, id_name_sym, 1);
-    // better here would be to use read_charsxp with the counter moved
-    // along to start_object to avoid reading two bytes
-    if (index->index[id_name].length == (R_xlen_t)len) {
-      stream_move_to(stream, index->index[id_name].start_object);
-      SEXP el = PROTECT(unpack_read_item(stream));
-      bool same = strcmp(CHAR(el), name) == 0;
-      UNPROTECT(1);
-      if (same) {
-        ret = index_find_car(index, id_attr);
-        break;
-      }
+    if (index_compare_charsxp(index, id_name, name, len, stream)) {
+      ret = index_find_car(index, id_attr);
+      break;
     }
     id_attr = index_find_cdr(index, id_attr);
     info_attr = index->index + id_attr;
   }
   return ret;
+}
+
+int index_find_charsxp(rds_index *index, size_t id, const char *str,
+                       stream_t stream) {
+  const size_t len = strlen(str);
+  sexp_info *info = index->index + id;
+  if (info->type != STRSXP) {
+    Rf_error("index_find_charsxp requires a STRSXP, not a %s",
+             type2str(info->type));
+  }
+  for (R_xlen_t i = 0; i < info->length; ++i) {
+    // this could be done more efficiently than this; this will slow
+    // down with very long lists and we could pick up from the current
+    // point.  This requires a index_find_nth_child(index, id, n, j, i)
+    // that will kick start the search from the current spot.  Or,
+    // probably simpler, swap this out for something that embeds the
+    // main loop from index_find_nth_child within.
+    int j = index_find_nth_child(index, id, i);
+    if (index_compare_charsxp(index, j, str, len, stream)) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+bool index_compare_charsxp(rds_index * index, size_t id,
+                           const char *str, size_t len,
+                           stream_t stream) {
+  bool same = false;
+  sexp_info *info_chr = index->index + id;
+  if ((size_t)info_chr->length == len) {
+    // TODO: could do this better if we can avoid deoding the
+    // character entirely.  To do that *encode* the argument CHARSXP
+    // then compare the memory directly.  That should be more
+    // efficient in most cases.  But nothing here will change with
+    // that change so we can delay it until later.  The same process
+    // could be used in find attribute
+    stream_move_to(stream, info_chr->start_object);
+    // better here would be to use read_charsxp with the counter moved
+    // along to start_object to avoid reading two bytes
+    SEXP el = PROTECT(unpack_read_item(stream));
+    same = strcmp(CHAR(el), str) == 0;
+    UNPROTECT(1);
+  }
+  return same;
 }
 
 SEXP r_index_find_id(SEXP r_index, SEXP r_at, SEXP r_start_id) {
@@ -189,9 +225,22 @@ SEXP r_index_find_attribute(SEXP r_index, SEXP r_id, SEXP r_name, SEXP r_x) {
   if (id > (index->id - 1)) {
     Rf_error("id is out of bounds");
   }
-  const char * name = scalar_character(r_name, name);
+  const char * name = scalar_character(r_name, "name");
   struct stream_st stream;
   unpack_prepare(r_x, &stream);
   int id_attr = index_find_attribute(index, id, name, &stream);
+  return ScalarInteger(id_attr < 0 ? NA_INTEGER : id_attr);
+}
+
+SEXP r_index_find_charsxp(SEXP r_index, SEXP r_id, SEXP r_str, SEXP r_x) {
+  rds_index * index = get_index(r_index, true);
+  size_t id = scalar_size(r_id, "id");
+  if (id > (index->id - 1)) {
+    Rf_error("id is out of bounds");
+  }
+  const char * str = scalar_character(r_str, "str");
+  struct stream_st stream;
+  unpack_prepare(r_x, &stream);
+  int id_attr = index_find_charsxp(index, id, str, &stream);
   return ScalarInteger(id_attr < 0 ? NA_INTEGER : id_attr);
 }
