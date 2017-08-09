@@ -40,6 +40,6 @@ index_find_cdr <- function(index, id) {
 index_find_nth_child <- function(index, id, n) {
   .Call(Cindex_find_nth_child, index, id, n)
 }
-index_find_attribute <- function(index, id, name, x) {
-  .Call(Cindex_find_attribute, index, id, name, x)
+index_find_attribute <- function(x, index, id, name) {
+  .Call(Cindex_find_attribute, x, index, id, name)
 }

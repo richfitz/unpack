@@ -4,30 +4,6 @@
 #include "unpack.h"
 #include "upstream.h"
 
-enum index_positions {
-  IDX_ID,
-  IDX_TYPE,
-  IDX_LEVELS,
-  IDX_IS_OBJECT,
-  IDX_HAS_ATTR,
-  IDX_HAS_TAG,
-  IDX_LENGTH,
-  IDX_PARENT,
-  IDX_START_OBJECT,
-  IDX_START_DATA,
-  IDX_START_ATTR,
-  IDX_END,
-};
-
-typedef struct {
-  // NOTE: Not using long things here because it complicates export.
-  // This needs changing in index_return and index_grow but perhaps
-  // nowhere else...
-  sexp_info * index;
-  size_t id; // id of the *next* object
-  size_t len;
-} rds_index;
-
 SEXP r_unpack_index(SEXP x, SEXP r_as_ptr);
 SEXP r_unpack_index_as_matrix(SEXP r_ptr);
 
@@ -37,15 +13,19 @@ void index_init(rds_index *index, size_t n);
 void index_grow(rds_index *index);
 SEXP index_return(rds_index *index);
 
-void index_build(stream_t stream, rds_index *index, size_t parent);
+void index_build(unpack_data *obj, size_t parent);
 
-void index_vector(stream_t stream, rds_index *index, size_t element_size,
-                  size_t id);
-void index_attributes(stream_t stream, rds_index *index, size_t id);
-void index_charsxp(stream_t stream, rds_index *index, size_t id);
-void index_pairlist(stream_t stream, rds_index *index, size_t id);
-void index_vector_generic(stream_t stream, rds_index *index, size_t id);
-void index_vector_character(stream_t stream, rds_index *index, size_t id);
-void index_symbol(stream_t stream, rds_index *index, size_t id);
+void index_vector(unpack_data *obj, size_t id, size_t element_size);
+void index_attributes(unpack_data *obj, size_t id);
+void index_charsxp(unpack_data *obj, size_t id);
+void index_ref(unpack_data *obj, size_t id);
+void index_pairlist(unpack_data *obj, size_t id);
+void index_vector_generic(unpack_data *obj, size_t id);
+void index_vector_character(unpack_data *obj, size_t id);
+void index_symbol(unpack_data *obj, size_t id);
+
+void init_read_index_ref(unpack_data *obj);
+int get_read_index_ref(unpack_data *obj, int idx);
+void add_read_index_ref(unpack_data *obj, size_t value);
 
 #endif

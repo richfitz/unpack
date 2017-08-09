@@ -5,19 +5,18 @@ static void r_index_finalize(SEXP r_ptr);
 
 SEXP r_unpack_index(SEXP x, SEXP r_as_ptr) {
   bool as_ptr = scalar_logical(r_as_ptr, "as_ptr");
-  struct stream_st stream;
-  unpack_prepare(x, &stream);
+  unpack_data *obj = unpack_data_prepare(x);
 
   rds_index *index = Calloc(1, rds_index);
   SEXP ret = PROTECT(R_MakeExternalPtr(index, R_NilValue, R_NilValue));
   R_RegisterCFinalizer(ret, r_index_finalize);
-
   index_init(index, 100);
-  index_build(&stream, index, 0);
-  if (stream.count != stream.size) {
-    Rf_error("Did not consume all of raw vector: %d bytes left",
-             stream.size - stream.count);
-  }
+  obj->index = index;
+  init_read_index_ref(obj);
+
+  index_build(obj, 0);
+  stream_check_empty(obj->stream);
+  index->ref_table = NULL;
 
   if (!as_ptr) {
     ret = r_unpack_index_as_matrix(ret);
@@ -62,7 +61,7 @@ void index_grow(rds_index *index) {
 // where the sizes exceed 2^31 - 1; we can check that with looking at
 // the end.
 SEXP index_return(rds_index *index) {
-  const size_t n = index->id, nc = 8;
+  const size_t n = index->id, nc = 9;
 
   SEXP ret = PROTECT(allocMatrix(INTSXP, n, nc));
   int
@@ -73,7 +72,8 @@ SEXP index_return(rds_index *index) {
     *start_object = INTEGER(ret) + n * 4,
     *start_data   = INTEGER(ret) + n * 5,
     *start_attr   = INTEGER(ret) + n * 6,
-    *end          = INTEGER(ret) + n * 7;
+    *end          = INTEGER(ret) + n * 7,
+    *refid        = INTEGER(ret) + n * 8;
   SEXP nms = PROTECT(allocVector(STRSXP, nc));
   SET_STRING_ELT(nms, 0, mkChar("id"));
   SET_STRING_ELT(nms, 1, mkChar("parent"));
@@ -83,6 +83,7 @@ SEXP index_return(rds_index *index) {
   SET_STRING_ELT(nms, 5, mkChar("start_data"));
   SET_STRING_ELT(nms, 6, mkChar("start_attr"));
   SET_STRING_ELT(nms, 7, mkChar("end"));
+  SET_STRING_ELT(nms, 8, mkChar("refid"));
   SEXP dns = PROTECT(allocVector(VECSXP, 2));
   SET_VECTOR_ELT(dns, 1, nms);
   setAttrib(ret, R_DimNamesSymbol, dns);
@@ -97,6 +98,7 @@ SEXP index_return(rds_index *index) {
     start_data[i]   = info->start_data;
     start_attr[i]   = info->start_attr;
     end[i]          = info->end;
+    refid[i]        = info->refid;
   }
 
   UNPROTECT(3);
@@ -104,17 +106,18 @@ SEXP index_return(rds_index *index) {
 }
 
 // TODO: index_build -> index_item?
-void index_build(stream_t stream, rds_index *index, size_t parent) {
-  if (index->id == index->len) {
-    index_grow(index);
+void index_build(unpack_data *obj, size_t parent) {
+  if (obj->index->id == obj->index->len) {
+    index_grow(obj->index);
   }
-  size_t id = index->id;
-  sexp_info *info = index->index + index->id;
-  info->start_object = stream->count;
-  unpack_flags(stream_read_integer(stream), info);
+  size_t id = obj->index->id;
+  sexp_info *info = obj->index->index + obj->index->id;
+  info->start_object = obj->stream->count;
+  unpack_flags(unpack_read_integer(obj), info);
   info->parent = parent;
-  info->start_data = stream->count;
-  index->id++;
+  info->refid = 0; // this is a lie but it does not matter
+  info->start_data = obj->stream->count;
+  obj->index->id++;
 
   switch (info->type) {
     // 1. Some singletons:
@@ -126,12 +129,14 @@ void index_build(stream_t stream, rds_index *index, size_t parent) {
   case MISSINGARG_SXP:
   case BASENAMESPACE_SXP:
     info->length = info->type != NILVALUE_SXP;
-    info->start_data = stream->count;
-    info->start_attr = stream->count;
-    info->end = stream->count;
+    info->start_data = obj->stream->count;
+    info->start_attr = obj->stream->count;
+    info->end = obj->stream->count;
     return;
     // 2. Reference objects; none of these are handled (yet? ever?)
   case REFSXP:
+    index_ref(obj, id);
+    return;
   case PERSISTSXP:
   case PACKAGESXP:
   case NAMESPACESXP:
@@ -140,7 +145,7 @@ void index_build(stream_t stream, rds_index *index, size_t parent) {
              CHAR(type2str(info->type)));
     // 3. Symbols
   case SYMSXP:
-    index_symbol(stream, index, id);
+    index_symbol(obj, id);
     return;
     // 4. Dotted pair lists
   case LISTSXP:
@@ -148,7 +153,7 @@ void index_build(stream_t stream, rds_index *index, size_t parent) {
   case CLOSXP:
   case PROMSXP:
   case DOTSXP:
-    index_pairlist(stream, index, id);
+    index_pairlist(obj, id);
     return;
     // 5. References
   case EXTPTRSXP:  // +attr
@@ -160,25 +165,25 @@ void index_build(stream_t stream, rds_index *index, size_t parent) {
              CHAR(type2str(info->type)));
     // 7. Single string
   case CHARSXP: // +attr
-    index_charsxp(stream, index, id);
+    index_charsxp(obj, id);
     return;
     // 8. Vectors!
   case LGLSXP: // +attr
   case INTSXP: // +attr
-    index_vector(stream, index, sizeof(int), id);
+    index_vector(obj, id, sizeof(int));
     return;
   case REALSXP: // +attr
-    index_vector(stream, index, sizeof(double), id);
+    index_vector(obj, id, sizeof(double));
     return;
   case CPLXSXP: // +attr
-    index_vector(stream, index, sizeof(Rcomplex), id);
+    index_vector(obj, id, sizeof(Rcomplex));
     return;
   case STRSXP: // +attr
-    index_vector_character(stream, index, id);
+    index_vector_character(obj, id);
     return;
   case VECSXP: // +attr
   case EXPRSXP: // +attr
-    index_vector_generic(stream, index, id);
+    index_vector_generic(obj, id);
     return;
     // 9. Weird shit
   case BCODESXP: // +attr
@@ -188,9 +193,8 @@ void index_build(stream_t stream, rds_index *index, size_t parent) {
              CHAR(type2str(info->type)));
     // 10. More vectors
   case RAWSXP: // +attr
-    index_vector(stream, index, sizeof(char), id);
+    index_vector(obj, id, sizeof(char));
     return;
-    // return stream_read_vector_raw(stream, &info);
     // 11. S4
   case S4SXP: // +attr
     Rf_error("implement this");
@@ -202,85 +206,95 @@ void index_build(stream_t stream, rds_index *index, size_t parent) {
   }
 }
 
-void index_vector(stream_t stream, rds_index *index,
-                  size_t element_size, size_t id) {
-  sexp_info *info = index->index + id;
-  info->length = stream_read_length(stream);
-  info->start_data = stream->count;
-  switch (stream->format) {
+void index_vector(unpack_data *obj, size_t id, size_t element_size) {
+  sexp_info *info = obj->index->index + id;
+  info->length = unpack_read_length(obj);
+  info->start_data = obj->stream->count;
+  switch (obj->stream->format) {
   case BINARY:
-    stream_advance(stream, element_size * info->length);
+    stream_advance(obj->stream, element_size * info->length);
     break;
   case ASCII:
   case XDR:
   default:
     Rf_error("not implemented (index_vector_real)");
   }
-  index_attributes(stream, index, id);
+  index_attributes(obj, id);
 }
 
-void index_charsxp(stream_t stream, rds_index *index, size_t id) {
-  sexp_info *info = index->index + id;
+void index_charsxp(unpack_data *obj, size_t id) {
+  sexp_info *info = obj->index->index + id;
   // NOTE: *not* read_length() because limited to 2^32 - 1
-  info->length = stream_read_integer(stream);
-  info->start_data = stream->count;
+  info->length = unpack_read_integer(obj);
+  info->start_data = obj->stream->count;
   if (info->length > 0) {
-    stream_advance(stream, info->length);
+    stream_advance(obj->stream, info->length);
   }
-  index_attributes(stream, index, id);
+  index_attributes(obj, id);
 }
 
-void index_symbol(stream_t stream, rds_index *index, size_t id) {
-  sexp_info *info = index->index + id;
+void index_ref(unpack_data *obj, size_t id) {
+  sexp_info *info = obj->index->index + id;
+  int idx = unpack_read_ref_index(obj, info);
+  info->length = 0;
+  info->start_data = obj->stream->count;
+  info->start_attr = obj->stream->count;
+  info->end = obj->stream->count;
+  info->refid = get_read_index_ref(obj, idx);
+}
+
+void index_symbol(unpack_data *obj, size_t id) {
+  sexp_info *info = obj->index->index + id;
   info->length = 1;
-  info->start_data = stream->count;
-  stream->depth++;
-  index_build(stream, index, id);
-  stream->depth--;
-  index->index[id].start_attr = stream->count;
-  index->index[id].end = stream->count;
+  info->start_data = obj->stream->count;
+  obj->stream->depth++;
+  index_build(obj, id);
+  obj->stream->depth--;
+  obj->index->index[id].start_attr = obj->stream->count;
+  obj->index->index[id].end = obj->stream->count;
+  add_read_index_ref(obj, id);
 }
 
-void index_vector_character(stream_t stream, rds_index *index, size_t id) {
-  index_vector_generic(stream, index, id);
+void index_vector_character(unpack_data *obj, size_t id) {
+  index_vector_generic(obj, id);
 }
 
-void index_vector_generic(stream_t stream, rds_index *index, size_t id) {
-  sexp_info *info = index->index + id;
-  info->length = stream_read_length(stream);
-  info->start_data = stream->count;
-  stream->depth++;
+void index_vector_generic(unpack_data *obj, size_t id) {
+  sexp_info *info = obj->index->index + id;
+  info->length = unpack_read_length(obj);
+  info->start_data = obj->stream->count;
+  obj->stream->depth++;
   for (R_xlen_t i = 0; i < info->length; ++i) {
-    index_build(stream, index, id);
+    index_build(obj, id);
   }
-  stream->depth--;
-  index_attributes(stream, index, id);
+  obj->stream->depth--;
+  index_attributes(obj, id);
 }
 
-void index_attributes(stream_t stream, rds_index *index, size_t id) {
-  sexp_info *info = index->index + id;
-  info->start_attr = stream->count;
+void index_attributes(unpack_data *obj, size_t id) {
+  sexp_info *info = obj->index->index + id;
+  info->start_attr = obj->stream->count;
   if (info->type == CHARSXP) {
     if (info->has_attr) {
-      stream->depth++;
+      obj->stream->depth++;
       Rf_error("WRITEME (attributes on charsxp)");
-      // unpack_read_item(stream);
-      stream->depth--;
+      // unpack_read_item(obj);
+      obj->stream->depth--;
     }
   } else if (info->has_attr) {
-    stream->depth++;
-    index_build(stream, index, id);
-    stream->depth--;
+    obj->stream->depth++;
+    index_build(obj, id);
+    obj->stream->depth--;
   }
-  index->index[id].end = stream->count;
+  obj->index->index[id].end = obj->stream->count;
 }
 
-void index_pairlist(stream_t stream, rds_index *index, size_t id) {
-  index->index[id].length = 1; // pairlist always have one element
-  index->index[id].start_attr = stream->count;
-  stream->depth++;
-  if (index->index[id].has_attr) {
-    index_build(stream, index, id);
+void index_pairlist(unpack_data *obj, size_t id) {
+  obj->index->index[id].length = 1; // pairlist always have one element
+  obj->index->index[id].start_attr = obj->stream->count;
+  obj->stream->depth++;
+  if (obj->index->index[id].has_attr) {
+    index_build(obj, id);
   }
   // We index this but it will not sensibly appear in some ways.  We
   // could infer it from the combination of has_tag and has_attr and
@@ -288,14 +302,14 @@ void index_pairlist(stream_t stream, rds_index *index, size_t id) {
   // getting the attribute out will be easy but not the cdr.  I'm not
   // really sure that this is rich enough to help us index into
   // pairlists actually.
-  if (index->index[id].has_tag) {
-    index_build(stream, index, id);
+  if (obj->index->index[id].has_tag) {
+    index_build(obj, id);
   }
-  index_build(stream, index, id); // car
-  stream->depth--;
-  index->index[id].start_data = stream->count;
-  index_build(stream, index, id); // cdr
-  index->index[id].end = stream->count;
+  index_build(obj, id); // car
+  obj->stream->depth--;
+  obj->index->index[id].start_data = obj->stream->count;
+  index_build(obj, id); // cdr
+  obj->index->index[id].end = obj->stream->count;
 }
 
 rds_index * get_index(SEXP r_ptr, bool closed_error) {
@@ -304,4 +318,68 @@ rds_index * get_index(SEXP r_ptr, bool closed_error) {
     Rf_error("index has been freed; can't use!");
   }
   return index;
+}
+
+// The process for inserting a ref during indexing is a little more
+// complicated.
+//
+// id = 20, count = 2
+//
+// set ref_table[2] = 20
+// set index[20].refid = 2
+//
+// resolve
+//
+// read 2
+// ref_table[2] ==>20
+// index.refid = 20
+//
+// Lookup
+//
+// .sameas ==> 20
+// index[20].refid ==> 2
+// references[2] ==> SEXP
+
+// MakeReadRefTable
+void init_read_index_ref(unpack_data *obj) {
+  obj->index->ref_table_len = INITIAL_REFREAD_TABLE_SIZE;
+  obj->index->ref_table_count = 0;
+  obj->index->ref_table =
+    (size_t*)R_alloc(obj->index->ref_table_len, sizeof(size_t));
+}
+
+// GetReadRef
+int get_read_index_ref(unpack_data *obj, int idx) {
+  int i = idx - 1;
+  if (i < 0 || (size_t)i >= obj->index->ref_table_count) {
+    Rf_error("reference index out of range");
+  }
+  size_t refid = obj->index->ref_table[i];
+  Rprintf("Retrieving reference %d (refid %d)\n", i, refid);
+  return refid;
+}
+
+// AddReadRef
+void add_read_index_ref(unpack_data *obj, size_t id) {
+  // used by:
+  // - [x] SYMSXP
+  // - [ ] PERSISTSXP
+  // - [ ] PACKAGESXP
+  // - [ ] NAMESPACESXP
+  // - [ ] ENVSXP
+  // - [ ] EXTPTRSXP
+  // - [ ] WEAKREFSXP
+  size_t count = obj->index->ref_table_count++;
+  if (count >= obj->index->ref_table_len) {
+    Rprintf("Growing reference index\n");
+    obj->index->ref_table_len *= 2;
+    size_t *prev = obj->index->ref_table;
+    obj->index->ref_table =
+      (size_t*) R_alloc(obj->index->ref_table_len, sizeof(size_t));
+    memcpy(obj->index->ref_table, prev,
+           obj->index->ref_table_len * sizeof(size_t));
+  }
+  obj->index->index[id].refid = count + 1;
+  obj->index->ref_table[count] = id;
+  Rprintf("Inserting reference %d (refid %d)\n", count, id);
 }

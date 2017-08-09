@@ -5,9 +5,10 @@
 // for the xdr version later (and ascii even later than that).
 
 // InBytes
-void stream_read_bytes(stream_t stream, void *buf, R_xlen_t len) {
+void unpack_read_bytes(unpack_data *obj, void *buf, R_xlen_t len) {
+  stream_t * stream = obj->stream;
   if (stream->count + len > stream->size) {
-    Rf_error("stream overflow (trying to set %d of %d)",
+    Rf_error("stream overflow (trying to move to %d of %d)",
              stream->count + len, stream->size);
   }
   memcpy(buf, stream->buf + stream->count, len);
@@ -15,7 +16,8 @@ void stream_read_bytes(stream_t stream, void *buf, R_xlen_t len) {
 }
 
 // InChar
-int stream_read_char(stream_t stream) {
+int unpack_read_char(unpack_data *obj) {
+  stream_t * stream = obj->stream;
   if (stream->count >= stream->size) {
     Rf_error("stream overflow");
   }
@@ -23,13 +25,13 @@ int stream_read_char(stream_t stream) {
 }
 
 // InInteger
-int stream_read_integer(stream_t stream) {
+int unpack_read_integer(unpack_data *obj) {
   // char word[128];
   // char buf[128];
   int i;
-  switch (stream->format) {
+  switch (obj->stream->format) {
   case BINARY:
-    stream_read_bytes(stream, &i, sizeof(int));
+    unpack_read_bytes(obj, &i, sizeof(int));
     return i;
   case ASCII:
   case XDR:
@@ -40,21 +42,21 @@ int stream_read_integer(stream_t stream) {
 }
 
 // InRefIndex
-int stream_read_ref_index(stream_t stream, sexp_info *info) {
+int unpack_read_ref_index(unpack_data *obj, sexp_info *info) {
   int i = UNPACK_REF_INDEX(info->flags);
   if (i == 0) {
-    return stream_read_integer(stream);
+    return unpack_read_integer(obj);
   } else {
     return i;
   }
 }
 
 // InString
-void stream_read_string(stream_t stream, char *buf, int length) {
-  switch (stream->format) {
+void unpack_read_string(unpack_data *obj, char *buf, int length) {
+  switch (obj->stream->format) {
   case BINARY:
   case XDR:
-    stream_read_bytes(stream, buf, length);
+    unpack_read_bytes(obj, buf, length);
     break;
   case ASCII:
   default:
@@ -63,15 +65,15 @@ void stream_read_string(stream_t stream, char *buf, int length) {
 }
 
 // ReadLENGTH
-R_xlen_t stream_read_length(stream_t stream) {
-  int len = stream_read_integer(stream);
+R_xlen_t unpack_read_length(unpack_data *obj) {
+  int len = unpack_read_integer(obj);
 #ifdef LONG_VECTOR_SUPPORT
   if (len < -1)
     Rf_error("negative serialized length for vector");
   if (len == -1) {
     unsigned int len1, len2;
-    len1 = stream_read_integer(stream); /* upper part */
-    len2 = stream_read_integer(stream); /* lower part */
+    len1 = unpack_read_integer(obj); /* upper part */
+    len2 = unpack_read_integer(obj); /* lower part */
     R_xlen_t xlen = len1;
     /* sanity check for now */
     if (len1 > 65536)
@@ -86,30 +88,30 @@ R_xlen_t stream_read_length(stream_t stream) {
 }
 
 // InIntegerVec
-SEXP stream_read_vector_integer(stream_t stream, sexp_info *info) {
-  info->length = stream_read_length(stream);
+SEXP unpack_read_vector_integer(unpack_data *obj, sexp_info *info) {
+  info->length = unpack_read_length(obj);
   SEXP s = PROTECT(allocVector(info->type, info->length));
-  switch (stream->format) {
+  switch (obj->stream->format) {
   case BINARY:
-    stream_read_bytes(stream, INTEGER(s), (size_t)(sizeof(int) * info->length));
+    unpack_read_bytes(obj, INTEGER(s), (size_t)(sizeof(int) * info->length));
     break;
   case ASCII:
   case XDR:
   default:
     Rf_error("not implemented (read_vector_integer)");
   }
-  unpack_add_attributes(s, info, stream);
+  unpack_add_attributes(s, info, obj);
   UNPROTECT(1);
   return s;
 }
 
 // InRealVec
-SEXP stream_read_vector_real(stream_t stream, sexp_info *info) {
-  info->length = stream_read_length(stream);
+SEXP unpack_read_vector_real(unpack_data *obj, sexp_info *info) {
+  info->length = unpack_read_length(obj);
   SEXP s = PROTECT(allocVector(info->type, info->length));
-  switch (stream->format) {
+  switch (obj->stream->format) {
   case BINARY:
-    stream_read_bytes(stream, REAL(s),
+    unpack_read_bytes(obj, REAL(s),
                       (size_t)(sizeof(double) * info->length));
     break;
   case ASCII:
@@ -117,18 +119,18 @@ SEXP stream_read_vector_real(stream_t stream, sexp_info *info) {
   default:
     Rf_error("not implemented (read_vector_real)");
   }
-  unpack_add_attributes(s, info, stream);
+  unpack_add_attributes(s, info, obj);
   UNPROTECT(1);
   return s;
 }
 
 // InComplexVec
-SEXP stream_read_vector_complex(stream_t stream, sexp_info *info) {
-  info->length = stream_read_length(stream);
+SEXP unpack_read_vector_complex(unpack_data *obj, sexp_info *info) {
+  info->length = unpack_read_length(obj);
   SEXP s = PROTECT(allocVector(info->type, info->length));
-  switch (stream->format) {
+  switch (obj->stream->format) {
   case BINARY:
-    stream_read_bytes(stream, COMPLEX(s),
+    unpack_read_bytes(obj, COMPLEX(s),
                       (size_t)(sizeof(Rcomplex) * info->length));
     break;
   case ASCII:
@@ -136,54 +138,54 @@ SEXP stream_read_vector_complex(stream_t stream, sexp_info *info) {
   default:
     Rf_error("not impemented (read_vector_complex)");
   }
-  unpack_add_attributes(s, info, stream);
+  unpack_add_attributes(s, info, obj);
   UNPROTECT(1);
   return s;
 }
 
 // ...no analog
-SEXP stream_read_vector_raw(stream_t stream, sexp_info *info) {
-  info->length = stream_read_length(stream);
+SEXP unpack_read_vector_raw(unpack_data *obj, sexp_info *info) {
+  info->length = unpack_read_length(obj);
   SEXP s = PROTECT(allocVector(info->type, info->length));
-  stream_read_bytes(stream, RAW(s), (size_t)info->length);
-  unpack_add_attributes(s, info, stream);
+  unpack_read_bytes(obj, RAW(s), (size_t)info->length);
+  unpack_add_attributes(s, info, obj);
   UNPROTECT(1);
   return s;
 }
 
 // ...no analog
-SEXP stream_read_vector_character(stream_t stream, sexp_info *info) {
-  info->length = stream_read_length(stream);
+SEXP unpack_read_vector_character(unpack_data *obj, sexp_info *info) {
+  info->length = unpack_read_length(obj);
   SEXP s = PROTECT(allocVector(info->type, info->length));
-  stream->depth++;
+  obj->stream->depth++;
   for (R_xlen_t i = 0; i < info->length; ++i) {
-    SET_STRING_ELT(s, i, unpack_read_item(stream));
+    SET_STRING_ELT(s, i, unpack_read_item(obj));
   }
-  stream->depth--;
-  unpack_add_attributes(s, info, stream);
+  obj->stream->depth--;
+  unpack_add_attributes(s, info, obj);
   UNPROTECT(1);
   return s;
 }
 
 // ...no analog
-SEXP stream_read_vector_generic(stream_t stream, sexp_info *info) {
-  info->length = stream_read_length(stream);
+SEXP unpack_read_vector_generic(unpack_data *obj, sexp_info *info) {
+  info->length = unpack_read_length(obj);
   SEXP s = PROTECT(allocVector(info->type, info->length));
-  stream->depth++;
+  obj->stream->depth++;
   for (R_xlen_t i = 0; i < info->length; ++i) {
-    SET_VECTOR_ELT(s, i, unpack_read_item(stream));
+    SET_VECTOR_ELT(s, i, unpack_read_item(obj));
   }
-  stream->depth--;
-  unpack_add_attributes(s, info, stream);
+  obj->stream->depth--;
+  unpack_add_attributes(s, info, obj);
   UNPROTECT(1);
   return s;
 }
 
 // ...no analog
-SEXP stream_read_symbol(stream_t stream, sexp_info *info) {
-  stream->depth++;
-  SEXP s = PROTECT(unpack_read_item(stream));
-  stream->depth--;
+SEXP unpack_read_symbol(unpack_data *obj, sexp_info *info) {
+  obj->stream->depth++;
+  SEXP s = PROTECT(unpack_read_item(obj));
+  obj->stream->depth--;
   // TODO: this _should_ be done with installTrChar which sets up the
   // translations.  However, we don't have access to that!  I don't
   // know if that will really hurt us if we don't have access to
@@ -196,13 +198,13 @@ SEXP stream_read_symbol(stream_t stream, sexp_info *info) {
   //
   // and warn if we're not able to do it.
   s = Rf_installChar(s);
-  add_read_ref(stream->ref_table, s);
+  add_read_ref(obj, s, info);
   UNPROTECT(1);
   return s;
 }
 
 // ...no analog
-SEXP stream_read_pairlist(stream_t stream, sexp_info *info) {
+SEXP unpack_read_pairlist(unpack_data *obj, sexp_info *info) {
   // From serialize.c:
   /* This handling of dotted pair objects still uses recursion
      on the CDR and so will overflow the PROTECT stack for long
@@ -217,27 +219,27 @@ SEXP stream_read_pairlist(stream_t stream, sexp_info *info) {
   SEXP s = PROTECT(allocSExp(info->type));
   SETLEVELS(s, info->levels);
   SET_OBJECT(s, info->is_object);
-  stream->depth++;
-  SET_ATTRIB(s, info->has_attr ? unpack_read_item(stream) : R_NilValue);
-  SET_TAG(s, info->has_tag ? unpack_read_item(stream) : R_NilValue);
-  SETCAR(s, unpack_read_item(stream));
-  stream->depth--;
-  SETCDR(s, unpack_read_item(stream));
+  obj->stream->depth++;
+  SET_ATTRIB(s, info->has_attr ? unpack_read_item(obj) : R_NilValue);
+  SET_TAG(s, info->has_tag ? unpack_read_item(obj) : R_NilValue);
+  SETCAR(s, unpack_read_item(obj));
+  obj->stream->depth--;
+  SETCDR(s, unpack_read_item(obj));
   UNPROTECT(1);
   return s;
 }
 
 // ...no analog
-SEXP stream_read_charsxp(stream_t stream, sexp_info *info) {
+SEXP unpack_read_charsxp(unpack_data *obj, sexp_info *info) {
   // NOTE: *not* read_length() because limited to 2^32 - 1
-  info->length = stream_read_integer(stream);
+  info->length = unpack_read_integer(obj);
   SEXP s;
   if (info->length == -1) {
     PROTECT(s = NA_STRING);
   } else if (info->length < 1000) {
     int enc = CE_NATIVE;
     char cbuf[info->length + 1];
-    stream_read_string(stream, cbuf, info->length);
+    unpack_read_string(obj, cbuf, info->length);
     cbuf[info->length] = '\0';
     // duplicated below
     if (info->levels & UTF8_MASK) {
@@ -252,7 +254,7 @@ SEXP stream_read_charsxp(stream_t stream, sexp_info *info) {
     int enc = CE_NATIVE;
     char *cbuf = CallocCharBuf(info->length);
     // duplicated above
-    stream_read_string(stream, cbuf, info->length);
+    unpack_read_string(obj, cbuf, info->length);
     if (info->levels & UTF8_MASK) {
       enc = CE_UTF8;
     } else if (info->levels & LATIN1_MASK) {
@@ -263,48 +265,57 @@ SEXP stream_read_charsxp(stream_t stream, sexp_info *info) {
     PROTECT(s = mkCharLenCE(cbuf, info->length, enc));
     Free(cbuf);
   }
-  unpack_add_attributes(s, info, stream);
+  unpack_add_attributes(s, info, obj);
   UNPROTECT(1);
   return s;
 }
 
 // ...no analog
-SEXP stream_read_ref(stream_t stream, sexp_info *info) {
-  int index = stream_read_ref_index(stream, info);
-  return get_read_ref(stream->ref_table, index);
+SEXP unpack_read_ref(unpack_data *obj, sexp_info *info) {
+  // This one is much easier than insertion because we will just
+  // arrange to be able to look the reference up.  Though if we do the
+  // resolution recursively that won't happen (but I think that a plan
+  // is a better bet).
+  int index = unpack_read_ref_index(obj, info);
+  return get_read_ref(obj, index);
 }
 
-void stream_advance(stream_t stream, R_xlen_t len) {
+void stream_advance(stream_t *stream, R_xlen_t len) {
   if (stream->count + len > stream->size) {
     Rf_error("stream overflow");
   }
   stream->count += len;
 }
 
-void stream_move_to(stream_t stream, R_xlen_t pos) {
+void stream_move_to(stream_t *stream, R_xlen_t pos) {
   if (pos > stream->size) {
     Rf_error("stream overflow");
   }
   stream->count = pos;
 }
 
-SEXP r_unpack_all(SEXP x) {
-  struct stream_st stream;
-  unpack_prepare(x, &stream);
-  stream.ref_table = PROTECT(init_read_ref());
-  SEXP obj = unpack_read_item(&stream);
-  if (stream.count != stream.size) {
+void stream_check_empty(stream_t *stream) {
+  if (stream->count != stream->size) {
     Rf_error("Did not consume all of raw vector: %d bytes left",
-             stream.size - stream.count);
+             stream->size - stream->count);
   }
-  UNPROTECT(1);
+}
+
+unpack_data * unpack_data_prepare(SEXP x) {
+  unpack_data * obj = (unpack_data *)R_alloc(1, sizeof(unpack_data));
+  unpack_prepare(x, obj);
+  obj->ref_objects = R_NilValue;
+  obj->index = NULL;
   return obj;
 }
 
-SEXP r_unpack_inspect(SEXP x) {
-  struct stream_st stream;
-  unpack_prepare(x, &stream);
-  return unpack_inspect_item(&stream);
+SEXP r_unpack_all(SEXP r_x) {
+  unpack_data *obj = unpack_data_prepare(r_x);
+  obj->ref_objects = PROTECT(init_read_ref(INITIAL_REFREAD_TABLE_SIZE));
+  SEXP ret = PROTECT(unpack_read_item(obj));
+  stream_check_empty(obj->stream);
+  UNPROTECT(2);
+  return ret;
 }
 
 SEXP r_sexptypes() {
@@ -439,63 +450,58 @@ SEXP r_to_sexptype(SEXP x) {
   return ret;
 }
 
-void unpack_prepare(SEXP x, stream_t stream) {
+void unpack_prepare(SEXP x, unpack_data *obj) {
   if (TYPEOF(x) != RAWSXP) {
     Rf_error("Expected a raw string");
   }
 
-  stream->count = 0;
-  stream->size = LENGTH(x);
-  stream->buf = RAW(x);
-  stream->depth = 0;
+  obj->stream = (stream_t *)R_alloc(1, sizeof(stream_t));
+  obj->stream->count = 0;
+  obj->stream->size = LENGTH(x);
+  obj->stream->buf = RAW(x);
+  obj->stream->depth = 0;
 
-  unpack_check_format(stream);
-  unpack_check_version(stream);
+  unpack_check_format(obj);
+  unpack_check_version(obj);
 }
 
-SEXP unpack_unserialise(stream_t stream) {
-  unpack_check_format(stream);
-  unpack_check_version(stream);
-  return unpack_read_item(stream);
-}
-
-void unpack_check_format(stream_t stream) {
+void unpack_check_format(unpack_data *obj) {
   char buf[2];
-  stream_read_bytes(stream, buf, 2);
+  unpack_read_bytes(obj, buf, 2);
   switch(buf[0]) {
   case 'A':
-    stream->format = ASCII;
+    obj->stream->format = ASCII;
     break;
   case 'B':
-    stream->format = BINARY;
+    obj->stream->format = BINARY;
     break;
   case 'X':
-    stream->format = XDR;
+    obj->stream->format = XDR;
     break;
   case '\n':
-    stream->format = ASCII;
-    stream_read_bytes(stream, buf, 1);
+    obj->stream->format = ASCII;
+    unpack_read_bytes(obj, buf, 1);
     break;
   default:
     Rf_error("Unknown input type");
   }
 }
 
-void unpack_check_version(stream_t stream) {
+void unpack_check_version(unpack_data *obj) {
   int version, writer_version, release_version;
-  version = stream_read_integer(stream);
+  version = unpack_read_integer(obj);
   // Could just walk the reader along 2 * sizeof(int) bytes instead
-  writer_version = stream_read_integer(stream);
-  release_version = stream_read_integer(stream);
+  writer_version = unpack_read_integer(obj);
+  release_version = unpack_read_integer(obj);
   if (version != 2) {
     Rf_error("Cannot read rds files in this format");
   }
 }
 
 // ReadItem
-SEXP unpack_read_item(stream_t stream) {
+SEXP unpack_read_item(unpack_data *obj) {
   sexp_info info;
-  unpack_flags(stream_read_integer(stream), &info);
+  unpack_flags(unpack_read_integer(obj), &info);
 
   switch (info.type) {
     // 1. Some singletons:
@@ -516,7 +522,7 @@ SEXP unpack_read_item(stream_t stream) {
     // 2. Reference objects; none of these are handled (yet? ever?)
   case REFSXP:
     // something like this:
-    return stream_read_ref(stream, &info);
+    return unpack_read_ref(obj, &info);
   case PERSISTSXP:
   case PACKAGESXP:
   case NAMESPACESXP:
@@ -525,14 +531,14 @@ SEXP unpack_read_item(stream_t stream) {
              CHAR(type2str(info.type)));
     // 3. Symbols
   case SYMSXP:
-    return stream_read_symbol(stream, &info);
+    return unpack_read_symbol(obj, &info);
     // 4. Dotted pair lists
   case LISTSXP:
   case LANGSXP:
   case CLOSXP:
   case PROMSXP:
   case DOTSXP:
-    return stream_read_pairlist(stream, &info);
+    return unpack_read_pairlist(obj, &info);
     // 5. References
   case EXTPTRSXP:  // +attr
   case WEAKREFSXP: // +attr
@@ -543,20 +549,20 @@ SEXP unpack_read_item(stream_t stream) {
              CHAR(type2str(info.type)));
     // 7. Single string
   case CHARSXP: // +attr
-    return stream_read_charsxp(stream, &info);
+    return unpack_read_charsxp(obj, &info);
     // 8. Vectors!
   case LGLSXP: // +attr
   case INTSXP: // +attr
-    return stream_read_vector_integer(stream, &info);
+    return unpack_read_vector_integer(obj, &info);
   case REALSXP: // +attr
-    return stream_read_vector_real(stream, &info);
+    return unpack_read_vector_real(obj, &info);
   case CPLXSXP: // +attr
-    return stream_read_vector_complex(stream, &info);
+    return unpack_read_vector_complex(obj, &info);
   case STRSXP: // +attr
-    return stream_read_vector_character(stream, &info);
+    return unpack_read_vector_character(obj, &info);
   case VECSXP: // +attr
   case EXPRSXP: // +attr
-    return stream_read_vector_generic(stream, &info);
+    return unpack_read_vector_generic(obj, &info);
     // 9. Weird shit
   case BCODESXP: // +attr
   case CLASSREFSXP: // +attr
@@ -565,7 +571,7 @@ SEXP unpack_read_item(stream_t stream) {
              CHAR(type2str(info.type)));
     // 10. More vectors
   case RAWSXP: // +attr
-    return stream_read_vector_raw(stream, &info);
+    return unpack_read_vector_raw(obj, &info);
     // 11. S4
   case S4SXP: // +attr
     Rf_error("implement this");
@@ -578,21 +584,21 @@ SEXP unpack_read_item(stream_t stream) {
   Rf_error("noreturn");
 }
 
-void unpack_add_attributes(SEXP s, sexp_info *info, stream_t stream) {
+void unpack_add_attributes(SEXP s, sexp_info *info, unpack_data *obj) {
   if (info->type != CHARSXP) {
     SETLEVELS(s, info->levels);
   }
   SET_OBJECT(s, info->is_object);
   if (TYPEOF(s) == CHARSXP) {
     if (info->has_attr) {
-      stream->depth++;
-      unpack_read_item(stream);
-      stream->depth--;
+      obj->stream->depth++;
+      unpack_read_item(obj);
+      obj->stream->depth--;
     }
   } else {
-    stream->depth++;
-    SET_ATTRIB(s, info->has_attr ? unpack_read_item(stream) : R_NilValue);
-    stream->depth--;
+    obj->stream->depth++;
+    SET_ATTRIB(s, info->has_attr ? unpack_read_item(obj) : R_NilValue);
+    obj->stream->depth--;
   }
 }
 
@@ -605,83 +611,18 @@ void unpack_flags(int flags, sexp_info * info) {
   info->has_tag = flags & HAS_TAG_BIT_MASK ? TRUE : FALSE;
 }
 
-SEXP unpack_inspect_item(stream_t stream) {
-  sexp_info info;
-  unpack_sexp_info(stream, &info);
-  if (info.type > 240) {
-    switch (info.type) {
-    case NILVALUE_SXP:
-      info.type = NILSXP; break;
-    case GLOBALENV_SXP:
-      info.type = ENVSXP; break;
-    }
-  }
-
-  size_t n = 7;
-  SEXP ret = PROTECT(allocVector(VECSXP, n));
-  SEXP nms = PROTECT(allocVector(STRSXP, n));
-  setAttrib(ret, R_NamesSymbol, nms);
-  SET_VECTOR_ELT(ret, 0, ScalarInteger(info.flags));
-  SET_STRING_ELT(nms, 0, mkChar("flags"));
-  SET_VECTOR_ELT(ret, 1, ScalarString(Rf_type2str(info.type)));
-  SET_STRING_ELT(nms, 1, mkChar("type"));
-  SET_VECTOR_ELT(ret, 2, ScalarInteger(info.levels));
-  SET_STRING_ELT(nms, 2, mkChar("levels"));
-  SET_VECTOR_ELT(ret, 3, ScalarLogical(info.is_object));
-  SET_STRING_ELT(nms, 3, mkChar("is_object"));
-  SET_VECTOR_ELT(ret, 4, ScalarLogical(info.has_attr));
-  SET_STRING_ELT(nms, 4, mkChar("has_attr"));
-  SET_VECTOR_ELT(ret, 5, ScalarLogical(info.has_tag));
-  SET_STRING_ELT(nms, 5, mkChar("has_tag"));
-  // TODO: deal with long numbers here; might need to swich this out...
-  SET_VECTOR_ELT(ret, 6, ScalarInteger(info.length));
-  SET_STRING_ELT(nms, 6, mkChar("length"));
-
-  UNPROTECT(2);
-  return ret;
-}
-
-void unpack_sexp_info(stream_t stream, sexp_info *info) {
-  unpack_flags(stream_read_integer(stream), info);
-
-  // These are all the types with a concept of length.  Reading the
-  // length does move the stream along to the beginning of the data
-  // element of the sexp.
-  switch (info->type) {
-  case CHARSXP:
-  case LGLSXP:
-  case INTSXP:
-  case REALSXP:
-  case CPLXSXP:
-  case STRSXP:
-  case EXPRSXP:
-  case VECSXP:
-  case RAWSXP:
-    info->length = stream_read_length(stream);
-    break;
-  case NILVALUE_SXP:
-    info->length = 0;
-    break;
-  default:
-    // This is of course incorrect for dotted lists but we can't at
-    // this point compute the length.
-    info->length = 1;
-    break;
-  };
-}
-
 // MakeReadRefTable
-#define INITIAL_REFREAD_TABLE_SIZE 182
-SEXP init_read_ref() {
-  SEXP data = allocVector(VECSXP, INITIAL_REFREAD_TABLE_SIZE);
+SEXP init_read_ref(size_t initial_size) {
+  SEXP data = allocVector(VECSXP, initial_size);
   SET_TRUELENGTH(data, 0);
   return CONS(data, R_NilValue);
 }
 
 // GetReadRef
-SEXP get_read_ref(SEXP table, int index) {
+SEXP get_read_ref(unpack_data *obj, int index) {
+  SEXP data = CAR(obj->ref_objects);
   int i = index - 1;
-  SEXP data = CAR(table);
+  Rprintf("Retrieving reference %d\n", i);
   if (i < 0 || i >= LENGTH(data)) {
     Rf_error("reference index out of range");
   }
@@ -689,7 +630,7 @@ SEXP get_read_ref(SEXP table, int index) {
 }
 
 // AddReadRef
-void add_read_ref(SEXP table, SEXP value) {
+void add_read_ref(unpack_data *obj, SEXP value, sexp_info *info) {
   // used by:
   // - [x] SYMSXP
   // - [ ] PERSISTSXP
@@ -701,23 +642,35 @@ void add_read_ref(SEXP table, SEXP value) {
   //
   // TODO: I do not think that the growth bits that I have here are R
   // API; TRUELENGTH and SET_TRUELENGTH - it might be instructive to
-  // search github.com/cran for usage.
-  SEXP data = CAR(table);
-  int count = TRUELENGTH(data) + 1;
-  if (count >= LENGTH(data)) {
-    int len;
-    SEXP newdata;
+  // search github.com/cran for usage.  If it's not, it's not actually
+  // a huge deal.
+  //
+  // TODO: there is more to write here for the case where we have the
+  // index, because then the id is different.
+  SEXP data = CAR(obj->ref_objects);
+  int count;
+  if (obj->index == NULL) {
+    count = TRUELENGTH(data) + 1;
+    if (count >= LENGTH(data)) {
+      int len;
+      SEXP newdata;
 
-    PROTECT(value);
-    len = 2 * count;
-    newdata = allocVector(VECSXP, len);
-    for (int i = 0; i < LENGTH(data); i++) {
-      SET_VECTOR_ELT(newdata, i, VECTOR_ELT(data, i));
+      PROTECT(value);
+      len = 2 * count;
+      newdata = allocVector(VECSXP, len);
+      for (int i = 0; i < LENGTH(data); i++) {
+        SET_VECTOR_ELT(newdata, i, VECTOR_ELT(data, i));
+      }
+      SETCAR(obj->ref_objects, newdata);
+      data = newdata;
+      UNPROTECT(1);
     }
-    SETCAR(table, newdata);
-    data = newdata;
-    UNPROTECT(1);
+    SET_TRUELENGTH(data, count);
+  } else {
+    Rf_error("untested");
+    // I think that this needs a little work
+    count = obj->index->index[info->refid].refid + 1;
   }
-  SET_TRUELENGTH(data, count);
+  Rprintf("Inserting reference %d\n", count - 1);
   SET_VECTOR_ELT(data, count - 1, value);
 }

@@ -23,6 +23,9 @@
 #define DECODE_TYPE(v) ((v) & 255)
 #define UNPACK_REF_INDEX(i) ((i) >> 8)
 
+// this could be different but there's no need to make the so
+#define INITIAL_REFREAD_TABLE_SIZE 182
+
 // From Defn.h
 #define BYTES_MASK (1<<1)
 #define LATIN1_MASK (1<<2)

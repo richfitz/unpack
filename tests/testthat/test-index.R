@@ -13,6 +13,7 @@ test_that("null", {
   expect_identical(idx[["parent"]], 0L)
   expect_identical(idx[["type"]], sexptypes[["NILVALUE"]])
   expect_identical(idx[["length"]], 0L)
+  expect_identical(idx[["same_as"]], 0L)
   ## There's nothing here:
   expect_identical(idx[["start_object"]], 14L)
   expect_identical(idx[["start_data"]], 18L)
@@ -185,4 +186,17 @@ test_that("access list elements", {
                "Expected a positive size for 'i'")
   expect_error(unpack_extract_element(xb, idx, 0L, 0L, TRUE),
                "Expected a nonzero positive size for 'i'")
+})
+
+test_that("symbol reference", {
+  a <- structure(list(structure(1, class = "foo")), class = "bar")
+  x <- serialize_binary(a)
+  idx_ptr <- unpack_index(x, TRUE)
+  idx <- unpack_index_as_matrix(idx_ptr)
+  expect_equal(unname(idx[10, "type"]), sexptypes[["REFSXP"]])
+  expect_equal(unname(idx[10, "same_as"]), 3L)
+  expect_equal(unname(idx[4L, "type"]), sexptypes[["SYMSXP"]])
+  ## This is always going to fail now because the reference bits
+  ## aren't done
+  unpack_extract(x, idx, 2L)
 })

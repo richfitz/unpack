@@ -51,4 +51,7 @@ test_that("attributes", {
 
 test_that("references", {
   expect_roundtrip(structure(list(structure(1, class = "foo")), class = "bar"))
+
+  a <- 1:3
+  expect_roundtrip(list(a, a))
 })

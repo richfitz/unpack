@@ -6,66 +6,66 @@
 // internal SEXP type (most probably a CHARSXP) so this should be
 // handled nicely.
 SEXP r_unpack_extract(SEXP r_x, SEXP r_index, SEXP r_id) {
-  rds_index * index = get_index(r_index, true);
+  unpack_data *obj = unpack_data_prepare(r_x);
+  obj->index = get_index(r_index, true);
   size_t id = scalar_size(r_id, "id");
-  struct stream_st stream;
-  unpack_prepare(r_x, &stream);
-  return unpack_extract(&stream, index, id);
+  return unpack_extract(obj, id);
 }
 
-SEXP unpack_extract(stream_t stream, rds_index * index, size_t id) {
-  if (id > (index->id - 1)) {
-    Rf_error("id is out of bounds (%d / %d)", id, index->id - 1);
+SEXP unpack_extract(unpack_data *obj, size_t id) {
+  if (id > (obj->index->id - 1)) {
+    Rf_error("id is out of bounds (%d / %d)", id, obj->index->id - 1);
   }
   if (id > 0) {
-    sexp_info *info = index->index + id;
-    stream_move_to(stream, info->start_object);
+    sexp_info *info = obj->index->index + id;
+    stream_move_to(obj->stream, info->start_object);
   }
-  return unpack_read_item(stream);
+  // TODO: this will not work with references; we need to resolve all
+  // required references first.
+  return unpack_read_item(obj);
 }
 
 // like `[[` - extract *one* element
 SEXP r_unpack_extract_element(SEXP r_x, SEXP r_index, SEXP r_id, SEXP r_i,
                               SEXP r_error_if_missing) {
-  rds_index * index = get_index(r_index, true);
+  unpack_data *obj = unpack_data_prepare(r_x);
+  obj->index = get_index(r_index, true);
   size_t id = scalar_size(r_id, "id");
   size_t i = scalar_size(r_i, "i");
   if (i == 0) {
     Rf_error("Expected a nonzero positive size for 'i'");
   }
-  struct stream_st stream;
-  unpack_prepare(r_x, &stream);
   bool error_if_missing =
     scalar_logical(r_error_if_missing, "error_if_missing");
 
-  return unpack_extract_element(&stream, index, id, i, error_if_missing);
+  return unpack_extract_element(obj, id, i, error_if_missing);
 }
 
-SEXP unpack_extract_element(stream_t stream, rds_index * index,
-                            size_t id, size_t i, bool error_if_missing) {
-  if (id > (index->id - 1)) {
+SEXP unpack_extract_element(unpack_data *obj, size_t id, size_t i,
+                            bool error_if_missing) {
+  if (id > (obj->index->id - 1)) {
     Rf_error("id is out of bounds");
   }
-  sexp_info * info = index->index + id;
+  sexp_info * info = obj->index->index + id;
   switch(info->type) {
   case VECSXP:
-    return unpack_extract_element_list(stream, index, id, i, error_if_missing);
+    return unpack_extract_element_list(obj, id, i, error_if_missing);
   default:
     Rf_error("Cannot extract element from a %s", type2str(info->type));
   }
 }
 
-SEXP unpack_extract_element_list(stream_t stream, rds_index * index,
-                                 size_t id, size_t i, bool error_if_missing) {
-  int j = index_find_nth_child(index, id, i); // NOTE: naturally base-1
+SEXP unpack_extract_element_list(unpack_data *obj, size_t id, size_t i,
+                                 bool error_if_missing) {
+  int j = index_find_nth_child(obj->index, id, i); // NOTE: naturally base-1
   SEXP ret = R_NilValue;
   if (j < 0) {
     if (error_if_missing) {
       Rf_error("Index %d out of bounds; must be on [1, %d]",
-               i, index->index[i].length);
+               i, obj->index->index[i].length);
     }
   } else {
-    ret = unpack_extract(stream, index, j);
+    ret = unpack_extract(obj, j);
   }
   return ret;
 }
@@ -123,31 +123,29 @@ int index_find_nth_child(rds_index *index, size_t id, size_t n) {
   return -1;
 }
 
-int index_find_attribute(rds_index *index, size_t id, const char *name,
-                         stream_t stream) {
+int index_find_attribute(unpack_data * obj, size_t id, const char *name) {
   const size_t len = strlen(name);
-  size_t id_attr = index_find_attributes(index, id);
-  sexp_info *info_attr = index->index + id_attr;
+  size_t id_attr = index_find_attributes(obj->index, id);
+  sexp_info *info_attr = obj->index->index + id_attr;
   int ret = -1;
   while (info_attr->type == LISTSXP) {
     size_t id_name_sym =
-      index_find_nth_child(index, id_attr, info_attr->has_attr + 1);
+      index_find_nth_child(obj->index, id_attr, info_attr->has_attr + 1);
     size_t id_name =
-      index_find_nth_child(index, id_name_sym, 1);
-    if (index_compare_charsxp(index, id_name, name, len, stream)) {
-      ret = index_find_car(index, id_attr);
+      index_find_nth_child(obj->index, id_name_sym, 1);
+    if (index_compare_charsxp(obj, id_name, name, len)) {
+      ret = index_find_car(obj->index, id_attr);
       break;
     }
-    id_attr = index_find_cdr(index, id_attr);
-    info_attr = index->index + id_attr;
+    id_attr = index_find_cdr(obj->index, id_attr);
+    info_attr = obj->index->index + id_attr;
   }
   return ret;
 }
 
-int index_find_charsxp(rds_index *index, size_t id, const char *str,
-                       stream_t stream) {
+int index_find_charsxp(unpack_data * obj, size_t id, const char *str) {
   const size_t len = strlen(str);
-  sexp_info *info = index->index + id;
+  sexp_info *info = obj->index->index + id;
   if (info->type != STRSXP) {
     Rf_error("index_find_charsxp requires a STRSXP, not a %s",
              type2str(info->type));
@@ -159,19 +157,18 @@ int index_find_charsxp(rds_index *index, size_t id, const char *str,
     // that will kick start the search from the current spot.  Or,
     // probably simpler, swap this out for something that embeds the
     // main loop from index_find_nth_child within.
-    int j = index_find_nth_child(index, id, i);
-    if (index_compare_charsxp(index, j, str, len, stream)) {
+    int j = index_find_nth_child(obj->index, id, i);
+    if (index_compare_charsxp(obj, j, str, len)) {
       return i;
     }
   }
   return -1;
 }
 
-bool index_compare_charsxp(rds_index * index, size_t id,
-                           const char *str, size_t len,
-                           stream_t stream) {
+bool index_compare_charsxp(unpack_data * obj, size_t id,
+                           const char *str, size_t len) {
   bool same = false;
-  sexp_info *info_chr = index->index + id;
+  sexp_info *info_chr = obj->index->index + id;
   if ((size_t)info_chr->length == len) {
     // TODO: could do this better if we can avoid deoding the
     // character entirely.  To do that *encode* the argument CHARSXP
@@ -179,10 +176,10 @@ bool index_compare_charsxp(rds_index * index, size_t id,
     // efficient in most cases.  But nothing here will change with
     // that change so we can delay it until later.  The same process
     // could be used in find attribute
-    stream_move_to(stream, info_chr->start_object);
+    stream_move_to(obj->stream, info_chr->start_object);
     // better here would be to use read_charsxp with the counter moved
     // along to start_object to avoid reading two bytes
-    SEXP el = PROTECT(unpack_read_item(stream));
+    SEXP el = PROTECT(unpack_read_item(obj));
     same = strcmp(CHAR(el), str) == 0;
     UNPROTECT(1);
   }
@@ -219,28 +216,26 @@ SEXP r_index_find_nth_child(SEXP r_index, SEXP r_id, SEXP r_n) {
   return ScalarInteger(index_find_nth_child(index, id, n));
 }
 
-SEXP r_index_find_attribute(SEXP r_index, SEXP r_id, SEXP r_name, SEXP r_x) {
-  rds_index * index = get_index(r_index, true);
+SEXP r_index_find_attribute(SEXP r_x, SEXP r_index, SEXP r_id, SEXP r_name) {
+  unpack_data *obj = unpack_data_prepare(r_x);
+  obj->index = get_index(r_index, true);
   size_t id = scalar_size(r_id, "id");
-  if (id > (index->id - 1)) {
+  if (id > (obj->index->id - 1)) {
     Rf_error("id is out of bounds");
   }
   const char * name = scalar_character(r_name, "name");
-  struct stream_st stream;
-  unpack_prepare(r_x, &stream);
-  int id_attr = index_find_attribute(index, id, name, &stream);
+  int id_attr = index_find_attribute(obj, id, name);
   return ScalarInteger(id_attr < 0 ? NA_INTEGER : id_attr);
 }
 
-SEXP r_index_find_charsxp(SEXP r_index, SEXP r_id, SEXP r_str, SEXP r_x) {
-  rds_index * index = get_index(r_index, true);
+SEXP r_index_find_charsxp(SEXP r_x, SEXP r_index, SEXP r_id, SEXP r_str) {
+  unpack_data *obj = unpack_data_prepare(r_x);
+  obj->index = get_index(r_index, true);
   size_t id = scalar_size(r_id, "id");
-  if (id > (index->id - 1)) {
+  if (id > (obj->index->id - 1)) {
     Rf_error("id is out of bounds");
   }
   const char * str = scalar_character(r_str, "str");
-  struct stream_st stream;
-  unpack_prepare(r_x, &stream);
-  int id_attr = index_find_charsxp(index, id, str, &stream);
+  int id_attr = index_find_charsxp(obj, id, str);
   return ScalarInteger(id_attr < 0 ? NA_INTEGER : id_attr);
 }
