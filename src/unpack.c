@@ -67,8 +67,94 @@ SEXP unpack_read_namespace(unpack_data *obj, sexp_info *info) {
   add_read_ref(obj, s, info);
   return s;
 }
+
+// This seems unlikely to be API, though it does all compile
 SEXP unpack_read_environment(unpack_data *obj, sexp_info *info) {
-  Rf_error("Unimplemented: unpack_read_environment");
+  int locked = unpack_read_integer(obj);
+  SEXP s = PROTECT(allocSExp(ENVSXP));
+  add_read_ref(obj, s, info);
+
+  obj->stream->depth++;
+  SET_ENCLOS(s, unpack_read_item(obj));
+  SET_FRAME(s, unpack_read_item(obj));
+  SET_HASHTAB(s, unpack_read_item(obj));
+  SET_ATTRIB(s, unpack_read_item(obj));
+  obj->stream->depth--;
+
+  if (ATTRIB(s) != R_NilValue &&
+      getAttrib(s, R_ClassSymbol) != R_NilValue) {
+    /* We don't write out the object bit for environments,
+       so reconstruct it here if needed. */
+    SET_OBJECT(s, 1);
+  }
+  R_RestoreHashCount(s);
+  if (locked) {
+    R_LockEnvironment(s, FALSE);
+  }
+  /* Convert a NULL enclosure to baseenv() */
+  if (ENCLOS(s) == R_NilValue) {
+    SET_ENCLOS(s, R_BaseEnv);
+  }
+
+  UNPROTECT(1);
+  return s;
+}
+
+SEXP unpack_read_extptr(unpack_data *obj, sexp_info *info) {
+  SEXP s = PROTECT(allocSExp(info->type));
+  add_read_ref(obj, s, info);
+  R_SetExternalPtrAddr(s, NULL);
+  obj->stream->depth++;
+  R_SetExternalPtrProtected(s, unpack_read_item(obj));
+  R_SetExternalPtrTag(s, unpack_read_item(obj));
+  obj->stream->depth--;
+  unpack_add_attributes(s, info, obj);
+  UNPROTECT(1);
+  return s;
+}
+
+SEXP unpack_read_weakref(unpack_data *obj, sexp_info *info) {
+  SEXP s = PROTECT(R_MakeWeakRef(R_NilValue, R_NilValue, R_NilValue,
+                                 FALSE));
+  add_read_ref(obj, s, info);
+  unpack_add_attributes(s, info, obj);
+  UNPROTECT(1);
+  return s;
+}
+
+// There is close to zero chance that this is API
+SEXP unpack_read_builtin(unpack_data *obj, sexp_info *info) {
+  /*
+  info->length = unpack_read_integer(obj);
+  char cbuf[info->length + 1];
+  unpack_read_string(obj, cbuf, info->length);
+  cbuf[info->length] = '\0';
+  int index = StrToInternal(cbuf);
+  if (index == NA_INTEGER) {
+    Rf_warning("unrecognized internal function name \"%s\"", cbuf);
+    return R_NilValue;
+  }
+  PROTECT(s = mkPRIMSXP(index, type == BUILTINSXP));
+  unpack_add_attributes(s, info, obj);
+  UNPROTECT(1);
+  return s;
+  */
+  Rf_error("unimplemented: unpack_read_builtin");
+  return R_NilValue;
+}
+
+SEXP unpack_read_bcode(unpack_data *obj, sexp_info *info) {
+  // This is another whole level of hell:
+  /*
+  info->length = unpack_read_integer(obj);
+  SEXP reps = PROTECT(allocVector(VECSXP, info->length));
+  SEXP s = ReadBC1(ref_table, reps, stream);
+  unpack_add_attributes(s, info, obj);
+  UNPROTECT(1);
+  return s;
+  */
+  Rf_error("unimplemented: unpack_read_bcode");
+  return R_NilValue;
 }
 
 // InString
@@ -191,6 +277,7 @@ SEXP unpack_read_vector_character(unpack_data *obj, sexp_info *info) {
 // integer read and no attribute check, and type set explicitly
 SEXP unpack_read_persistent_string(unpack_data *obj, sexp_info *info) {
   if (unpack_read_integer(obj) != 0) {
+    // This is an R limitation
     Rf_error("names in persistent strings are not supported yet");
   }
   info->length = unpack_read_length(obj);
@@ -315,6 +402,18 @@ SEXP unpack_read_ref(unpack_data *obj, sexp_info *info) {
   // is a better bet).
   int index = unpack_read_ref_index(obj, info);
   return get_read_ref(obj, index);
+}
+
+SEXP unpack_read_persist(unpack_data *obj, sexp_info *info) {
+  SEXP s = PROTECT(unpack_read_persistent_string(obj, info));
+  Rf_error("unimplemented: unpack_read_persistent");
+  // s = PersistentRestore(stream, s);
+  //  if (stream->InPersistHookFunc == NULL)
+  //    error(_("no restore method available"));
+  //  return stream->InPersistHookFunc(s, stream->InPersistHookData);
+  UNPROTECT(1);
+  add_read_ref(obj, s, info);
+  return s;
 }
 
 void stream_advance(stream_t *stream, R_xlen_t len) {
@@ -560,7 +659,7 @@ SEXP unpack_read_item(unpack_data *obj) {
   case REFSXP:
     return unpack_read_ref(obj, &info);
   case PERSISTSXP: // this is done with the hook function
-    Rf_error("Can't unpack objects of type PERSISTSXP");
+    return unpack_read_persist(obj, &info);
   case PACKAGESXP:
     return unpack_read_package(obj, &info);
   case NAMESPACESXP:
@@ -579,12 +678,13 @@ SEXP unpack_read_item(unpack_data *obj) {
     return unpack_read_pairlist(obj, &info);
     // 5. References
   case EXTPTRSXP:  // +attr
+    return unpack_read_extptr(obj, &info);
   case WEAKREFSXP: // +attr
+    return unpack_read_weakref(obj, &info);
     // 6. Special functions
   case SPECIALSXP: // +attr
   case BUILTINSXP: // +attr
-    Rf_error("Can't unpack objects of type %s",
-             CHAR(type2str(info.type)));
+    return unpack_read_builtin(obj, &info);
     // 7. Single string
   case CHARSXP: // +attr
     return unpack_read_charsxp(obj, &info);
@@ -603,10 +703,11 @@ SEXP unpack_read_item(unpack_data *obj) {
     return unpack_read_vector_generic(obj, &info);
     // 9. Weird shit
   case BCODESXP: // +attr
+    return unpack_read_bcode(obj, &info);
   case CLASSREFSXP: // +attr
+    Rf_error("Can't unpack class references");
   case GENERICREFSXP: // +attr
-    Rf_error("Can't unpack objects of type %s",
-             CHAR(type2str(info.type)));
+    Rf_error("Can't unpack generic function references");
     // 10. More vectors
   case RAWSXP: // +attr
     return unpack_read_vector_raw(obj, &info);

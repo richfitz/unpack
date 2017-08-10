@@ -65,3 +65,12 @@ test_that("package", {
   x <- suppressWarnings(serialize_binary(p))
   expect_identical(unpack_all(x), p)
 })
+
+test_that("env", {
+  e <- new.env(parent = emptyenv())
+  e$a <- 1L
+  e2 <- unpack_all(serialize_binary(e))
+  expect_identical(parent.env(e), parent.env(e2))
+  expect_identical(ls(e), ls(e2))
+  expect_identical(as.list(e), as.list(e2))
+})
