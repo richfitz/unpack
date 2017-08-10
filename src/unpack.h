@@ -84,6 +84,10 @@ SEXP unpack_read_vector_character(unpack_data *obj, sexp_info *info);
 SEXP unpack_read_vector_generic(unpack_data *obj, sexp_info *info);
 SEXP unpack_read_charsxp(unpack_data *obj, sexp_info *info);
 SEXP unpack_read_ref(unpack_data *obj, sexp_info *info);
+SEXP unpack_read_package(unpack_data *obj, sexp_info *info);
+SEXP unpack_read_namespace(unpack_data *obj, sexp_info *info);
+SEXP unpack_read_environment(unpack_data *obj, sexp_info *info);
+SEXP unpack_read_persistent_string(unpack_data *obj, sexp_info *info);
 
 SEXP unpack_read_item(unpack_data *obj);
 

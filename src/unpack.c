@@ -1,6 +1,8 @@
 #include "unpack.h"
 #include "upstream.h"
 
+static SEXP R_FindNamespace1(SEXP info);
+
 // TODO: For now, assume the native byte order version and come back
 // for the xdr version later (and ascii even later than that).
 
@@ -49,6 +51,24 @@ int unpack_read_ref_index(unpack_data *obj, sexp_info *info) {
   } else {
     return i;
   }
+}
+
+SEXP unpack_read_package(unpack_data *obj, sexp_info *info) {
+  SEXP s = PROTECT(unpack_read_persistent_string(obj, info));
+  s = R_FindPackageEnv(s);
+  UNPROTECT(1);
+  add_read_ref(obj, s, info);
+  return s;
+}
+SEXP unpack_read_namespace(unpack_data *obj, sexp_info *info) {
+  SEXP s = PROTECT(unpack_read_persistent_string(obj, info));
+  s = R_FindNamespace1(s);
+  UNPROTECT(1);
+  add_read_ref(obj, s, info);
+  return s;
+}
+SEXP unpack_read_environment(unpack_data *obj, sexp_info *info) {
+  Rf_error("Unimplemented: unpack_read_environment");
 }
 
 // InString
@@ -163,6 +183,23 @@ SEXP unpack_read_vector_character(unpack_data *obj, sexp_info *info) {
   }
   obj->stream->depth--;
   unpack_add_attributes(s, info, obj);
+  UNPROTECT(1);
+  return s;
+}
+
+// InStringVec - almost the same as the above, but with one extra
+// integer read and no attribute check, and type set explicitly
+SEXP unpack_read_persistent_string(unpack_data *obj, sexp_info *info) {
+  if (unpack_read_integer(obj) != 0) {
+    Rf_error("names in persistent strings are not supported yet");
+  }
+  info->length = unpack_read_length(obj);
+  SEXP s = PROTECT(allocVector(STRSXP, info->length));
+  obj->stream->depth++;
+  for (R_xlen_t i = 0; i < info->length; ++i) {
+    SET_STRING_ELT(s, i, unpack_read_item(obj));
+  }
+  obj->stream->depth--;
   UNPROTECT(1);
   return s;
 }
@@ -519,16 +556,17 @@ SEXP unpack_read_item(unpack_data *obj) {
     return R_MissingArg;
   case BASENAMESPACE_SXP:
     return R_BaseNamespace;
-    // 2. Reference objects; none of these are handled (yet? ever?)
+    // 2. Reference objects
   case REFSXP:
-    // something like this:
     return unpack_read_ref(obj, &info);
-  case PERSISTSXP:
+  case PERSISTSXP: // this is done with the hook function
+    Rf_error("Can't unpack objects of type PERSISTSXP");
   case PACKAGESXP:
+    return unpack_read_package(obj, &info);
   case NAMESPACESXP:
+    return unpack_read_namespace(obj, &info);
   case ENVSXP:
-    Rf_error("Can't unpack objects of type %s",
-             CHAR(type2str(info.type)));
+    return unpack_read_environment(obj, &info);
     // 3. Symbols
   case SYMSXP:
     return unpack_read_symbol(obj, &info);
@@ -634,8 +672,8 @@ void add_read_ref(unpack_data *obj, SEXP value, sexp_info *info) {
   // used by:
   // - [x] SYMSXP
   // - [ ] PERSISTSXP
-  // - [ ] PACKAGESXP
-  // - [ ] NAMESPACESXP
+  // - [x] PACKAGESXP
+  // - [x] NAMESPACESXP
   // - [ ] ENVSXP
   // - [ ] EXTPTRSXP
   // - [ ] WEAKREFSXP
@@ -673,4 +711,20 @@ void add_read_ref(unpack_data *obj, SEXP value, sexp_info *info) {
   }
   Rprintf("Inserting reference %d\n", count - 1);
   SET_VECTOR_ELT(data, count - 1, value);
+}
+
+// From base R: src/main/serialize.c
+//
+// NOTE: the lastname bit is not done properly here.
+static SEXP R_FindNamespace1(SEXP info)
+{
+  SEXP expr, val, where;
+  PROTECT(info);
+  where = PROTECT(ScalarString(mkChar("serialized object")));
+  SEXP s_getNamespace = install("..getNamespace");
+  PROTECT(expr = LCONS(s_getNamespace,
+                       LCONS(info, LCONS(where, R_NilValue))));
+  val = eval(expr, R_GlobalEnv);
+  UNPROTECT(3);
+  return val;
 }

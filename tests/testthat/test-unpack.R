@@ -55,3 +55,13 @@ test_that("references", {
   a <- 1:3
   expect_roundtrip(list(a, a))
 })
+
+test_that("namespace", {
+  expect_roundtrip(asNamespace("stats"))
+})
+
+test_that("package", {
+  p <- as.environment("package:stats")
+  x <- suppressWarnings(serialize_binary(p))
+  expect_identical(unpack_all(x), p)
+})
