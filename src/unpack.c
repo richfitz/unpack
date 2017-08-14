@@ -405,6 +405,7 @@ SEXP unpack_read_ref(unpack_data *obj, sexp_info *info) {
 }
 
 SEXP unpack_read_persist(unpack_data *obj, sexp_info *info) {
+  // PERSISTSXP
   SEXP s = PROTECT(unpack_read_persistent_string(obj, info));
   Rf_error("unimplemented: unpack_read_persistent");
   // s = PersistentRestore(stream, s);
@@ -775,9 +776,9 @@ void add_read_ref(unpack_data *obj, SEXP value, sexp_info *info) {
   // - [ ] PERSISTSXP
   // - [x] PACKAGESXP
   // - [x] NAMESPACESXP
-  // - [ ] ENVSXP
-  // - [ ] EXTPTRSXP
-  // - [ ] WEAKREFSXP
+  // - [x] ENVSXP
+  // - [x] EXTPTRSXP
+  // - [x] WEAKREFSXP
   //
   // TODO: I do not think that the growth bits that I have here are R
   // API; TRUELENGTH and SET_TRUELENGTH - it might be instructive to

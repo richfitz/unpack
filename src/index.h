@@ -19,10 +19,17 @@ void index_vector(unpack_data *obj, size_t id, size_t element_size);
 void index_attributes(unpack_data *obj, size_t id);
 void index_charsxp(unpack_data *obj, size_t id);
 void index_ref(unpack_data *obj, size_t id);
+void index_package(unpack_data *obj, size_t id);
+void index_namespace(unpack_data *obj, size_t id);
+void index_environment(unpack_data *obj, size_t id);
 void index_pairlist(unpack_data *obj, size_t id);
 void index_vector_generic(unpack_data *obj, size_t id);
 void index_vector_character(unpack_data *obj, size_t id);
 void index_symbol(unpack_data *obj, size_t id);
+void index_extptr(unpack_data *obj, size_t id);
+void index_weakref(unpack_data *obj, size_t id);
+
+void index_persistent_string(unpack_data *obj, size_t id);
 
 void init_read_index_ref(unpack_data *obj);
 int get_read_index_ref(unpack_data *obj, int idx);

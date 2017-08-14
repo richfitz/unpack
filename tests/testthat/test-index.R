@@ -13,7 +13,7 @@ test_that("null", {
   expect_identical(idx[["parent"]], 0L)
   expect_identical(idx[["type"]], sexptypes[["NILVALUE"]])
   expect_identical(idx[["length"]], 0L)
-  expect_identical(idx[["same_as"]], 0L)
+  expect_identical(idx[["refid"]], 0L)
   ## There's nothing here:
   expect_identical(idx[["start_object"]], 14L)
   expect_identical(idx[["start_data"]], 18L)
@@ -194,9 +194,70 @@ test_that("symbol reference", {
   idx_ptr <- unpack_index(x, TRUE)
   idx <- unpack_index_as_matrix(idx_ptr)
   expect_equal(unname(idx[10, "type"]), sexptypes[["REFSXP"]])
-  expect_equal(unname(idx[10, "same_as"]), 3L)
+  expect_equal(unname(idx[10, "refid"]), 3L)
   expect_equal(unname(idx[4L, "type"]), sexptypes[["SYMSXP"]])
   ## This is always going to fail now because the reference bits
   ## aren't done
   unpack_extract(x, idx, 2L)
+})
+
+test_that("namespace", {
+  a <- asNamespace("stats")
+  x <- serialize_binary(a)
+  idx <- unpack_index(x)
+  expect_equal(nrow(idx), 3)
+  expect_equal(
+    rawToChar(x[(idx[2, "start_data"] + 1):(idx[2, "start_attr"])]),
+    "stats")
+  expect_equal(
+    rawToChar(x[(idx[3, "start_data"] + 1):(idx[3, "start_attr"])]),
+    as.character(getRversion()))
+})
+
+test_that("package", {
+  p <- as.environment("package:stats")
+  x <- suppressWarnings(serialize_binary(p))
+  idx <- unpack_index(x)
+  expect_equal(nrow(idx), 2)
+  expect_equal(
+    rawToChar(x[(idx[2, "start_data"] + 1):(idx[2, "start_attr"])]),
+    "package:stats")
+})
+
+test_that("external pointer", {
+  b <- as.raw(c(0x42, 0x0a, 0x02, 0x00, 0x00, 0x00, 0x00, 0x04, 0x03,
+                0x00, 0x00, 0x03, 0x02, 0x00, 0x16, 0x00, 0x00, 0x00,
+                0xfe, 0x00, 0x00, 0x00, 0xfe, 0x00, 0x00, 0x00))
+  idx <- unpack_index(b)
+  expect_equal(nrow(idx), 3)
+  expect_equal(idx[, "type"],
+               unname(sexptypes[c("EXTPTRSXP", "NILVALUE", "NILVALUE")]))
+})
+
+test_that("environment", {
+  ## Easiest to start with; an environment with one thing in it, and
+  ## no hash table.
+  e <- new.env(parent = emptyenv(), hash = FALSE)
+  e$a <- 1L
+  idx <- unpack_index(serialize_binary(e))
+
+  expect_equal(idx[, "type"][[1]], sexptypes[["ENVSXP"]])
+  expect_equal(idx[, "length"][[1]], 1L)
+  expect_equal(idx[, "refid"][[1]], 1L)
+
+  ## Four children:
+  i <- idx[, "parent"] == 0 & idx[, "id"] != 0
+  expect_equal(sum(i), 4)
+  expect_equal(to_sexptype(idx[i, "type"]),
+               ## enclos,     frame,     hashtab,    attrib
+               c("EMPTYENV", "LISTSXP", "NILVALUE", "NILVALUE"))
+
+  ## So all the action is happening in the second child, which is a listsxp
+  ##
+  ## We have listsxp, with an attribute; that's the name (via a
+  ## symbol), and the value as the CAR, NULL as the CDR
+  j <- idx[, "parent"] == idx[i, "id"][[2]]
+  idx[j, ]
+  expect_equal(unname(idx[j, "type"]),
+               unname(sexptypes[c("SYMSXP", "INTSXP", "NILVALUE")]))
 })

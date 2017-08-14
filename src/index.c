@@ -1,6 +1,11 @@
 #include "index.h"
 #include "util.h"
 
+// TODO: start_data is set in two different places here - for
+// everything in index_build() just after setting refid, but also
+// within some of the functions.  It's not clear that this is being
+// done that badly, but it feels like there's some repetition here.
+
 static void r_index_finalize(SEXP r_ptr);
 
 SEXP r_unpack_index(SEXP x, SEXP r_as_ptr) {
@@ -129,7 +134,6 @@ void index_build(unpack_data *obj, size_t parent) {
   case MISSINGARG_SXP:
   case BASENAMESPACE_SXP:
     info->length = info->type != NILVALUE_SXP;
-    info->start_data = obj->stream->count;
     info->start_attr = obj->stream->count;
     info->end = obj->stream->count;
     return;
@@ -138,11 +142,16 @@ void index_build(unpack_data *obj, size_t parent) {
     index_ref(obj, id);
     return;
   case PERSISTSXP:
+    Rf_error("unimplemented: index_persistent");
   case PACKAGESXP:
+    index_package(obj, id);
+    return;
   case NAMESPACESXP:
+    index_namespace(obj, id);
+    return;
   case ENVSXP:
-    Rf_error("Can't unpack objects of type %s",
-             CHAR(type2str(info->type)));
+    index_environment(obj, id);
+    return;
     // 3. Symbols
   case SYMSXP:
     index_symbol(obj, id);
@@ -157,7 +166,11 @@ void index_build(unpack_data *obj, size_t parent) {
     return;
     // 5. References
   case EXTPTRSXP:  // +attr
+    index_extptr(obj, id);
+    return;
   case WEAKREFSXP: // +attr
+    index_weakref(obj, id);
+    return;
     // 6. Special functions
   case SPECIALSXP: // +attr
   case BUILTINSXP: // +attr
@@ -243,10 +256,47 @@ void index_ref(unpack_data *obj, size_t id) {
   info->refid = get_read_index_ref(obj, idx);
 }
 
+void index_package(unpack_data *obj, size_t id) {
+  index_persistent_string(obj, id);
+  add_read_index_ref(obj, id);
+}
+
+void index_namespace(unpack_data *obj, size_t id) {
+  index_persistent_string(obj, id);
+  add_read_index_ref(obj, id);
+}
+
+void index_environment(unpack_data *obj, size_t id) {
+  obj->index->index[id].length = 1;
+  unpack_read_integer(obj); // locked/unlocked (TODO: advance_integer instead?)
+  add_read_index_ref(obj, id);
+  obj->index->index[id].start_data = obj->stream->count;
+  obj->stream->depth++;
+  index_build(obj, id); // enclos
+  index_build(obj, id); // frame
+  index_build(obj, id); // hashtab
+  obj->index->index[id].start_attr = obj->stream->count;
+  index_build(obj, id); // attrib
+  obj->stream->depth--;
+  obj->index->index[id].end = obj->stream->count;
+}
+
+void index_extptr(unpack_data *obj, size_t id) {
+  obj->index->index[id].length = 1;
+  add_read_index_ref(obj, id);
+  index_build(obj, id); // prot
+  index_build(obj, id); // tag
+  index_attributes(obj, id);
+}
+
+void index_weakref(unpack_data *obj, size_t id) {
+  obj->index->index[id].length = 1;
+  add_read_index_ref(obj, id);
+  index_attributes(obj, id);
+}
+
 void index_symbol(unpack_data *obj, size_t id) {
-  sexp_info *info = obj->index->index + id;
-  info->length = 1;
-  info->start_data = obj->stream->count;
+  obj->index->index[id].length = 1;
   obj->stream->depth++;
   index_build(obj, id);
   obj->stream->depth--;
@@ -260,15 +310,33 @@ void index_vector_character(unpack_data *obj, size_t id) {
 }
 
 void index_vector_generic(unpack_data *obj, size_t id) {
-  sexp_info *info = obj->index->index + id;
-  info->length = unpack_read_length(obj);
-  info->start_data = obj->stream->count;
+  obj->index->index[id].length = unpack_read_length(obj);
+  obj->index->index[id].start_data = obj->stream->count;
   obj->stream->depth++;
-  for (R_xlen_t i = 0; i < info->length; ++i) {
+  for (R_xlen_t i = 0; i < obj->index->index[id].length; ++i) {
     index_build(obj, id);
   }
   obj->stream->depth--;
   index_attributes(obj, id);
+}
+
+// almost the same as the index_persistent_character, but with one
+// extra integer read and no attribute check
+void index_persistent_string(unpack_data *obj, size_t id) {
+  if (unpack_read_integer(obj) != 0) {
+    // This is an R limitation
+    Rf_error("names in persistent strings are not supported yet");
+  }
+  R_xlen_t len = unpack_read_integer(obj); // or store in obj?
+  obj->index->index[id].length = len;
+  obj->index->index[id].start_data = obj->stream->count;
+  obj->stream->depth++;
+  for (R_xlen_t i = 0; i < len; ++i) {
+    index_build(obj, id);
+  }
+  obj->stream->depth--;
+  obj->index->index[id].start_attr = obj->stream->count;
+  obj->index->index[id].end = obj->stream->count;
 }
 
 void index_attributes(unpack_data *obj, size_t id) {
