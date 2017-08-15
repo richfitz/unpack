@@ -35,15 +35,12 @@ unpack_index_refs_clear <- function(index) {
   invisible()
 }
 
-unpack_extract_element <- function(x, index, id, i, error_if_missing = TRUE) {
-  .Call(Cunpack_extract_element, x, index, id, i, error_if_missing)
+## Find
+index_find_element <- function(index, id, i) {
+  .Call(Cindex_find_element, index, id, i)
 }
-
-index_find_id <- function(index, at, start_id = 0L) {
-  .Call(Cindex_find_id, index, at, start_id)
-}
-index_find_attributes <- function(index, id) {
-  .Call(Cindex_find_attributes, index, id)
+index_find_nth_child <- function(index, id, n) {
+  .Call(Cindex_find_nth_child, index, id, n)
 }
 index_find_car <- function(index, id) {
   .Call(Cindex_find_car, index, id)
@@ -51,9 +48,9 @@ index_find_car <- function(index, id) {
 index_find_cdr <- function(index, id) {
   .Call(Cindex_find_cdr, index, id)
 }
-index_find_nth_child <- function(index, id, n) {
-  .Call(Cindex_find_nth_child, index, id, n)
+index_find_id <- function(index, at, start_id = 0L) {
+  .Call(Cindex_find_id, index, at, start_id)
 }
-index_find_attribute <- function(x, index, id, name) {
-  .Call(Cindex_find_attribute, x, index, id, name)
+index_find_attributes <- function(index, id) {
+  .Call(Cindex_find_attributes, index, id)
 }

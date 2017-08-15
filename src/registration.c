@@ -1,6 +1,8 @@
 #include "unpack.h"
 #include "index.h"
 #include "extract.h"
+#include "find.h"
+
 #include <R_ext/Rdynload.h>
 #include <Rversion.h>
 
@@ -20,19 +22,15 @@ static const R_CallMethodDef call_methods[] = {
   {"Cunpack_index_refs",           (DL_FUNC) &r_unpack_index_refs,         1},
   {"Cunpack_index_refs_clear",     (DL_FUNC) &r_unpack_index_refs_clear,   1},
 
-  /*
   // find things
-  {"Cindex_find_id",               (DL_FUNC) &r_index_find_id,             3},
-  {"Cindex_find_attributes",       (DL_FUNC) &r_index_find_attributes,     2},
+  {"Cindex_find_element",          (DL_FUNC) &r_index_find_element,        3},
+  {"Cindex_find_nth_child",        (DL_FUNC) &r_index_find_nth_child,      3},
   {"Cindex_find_car",              (DL_FUNC) &r_index_find_car,            2},
   {"Cindex_find_cdr",              (DL_FUNC) &r_index_find_cdr,            2},
-  {"Cindex_find_nth_child",        (DL_FUNC) &r_index_find_nth_child,      3},
-  {"Cindex_find_attribute",        (DL_FUNC) &r_index_find_attribute,      4},
+  {"Cindex_find_attributes",       (DL_FUNC) &r_index_find_attributes,     2},
+  {"Cindex_find_id",               (DL_FUNC) &r_index_find_id,             3},
 
-  // subset
-  {"Cunpack_extract",              (DL_FUNC) &r_unpack_extract,            3},
-  {"Cunpack_extract_element",      (DL_FUNC) &r_unpack_extract_element,    5},
-  */
+  //{"Cindex_find_attribute",        (DL_FUNC) &r_index_find_attribute,      4},
 
   // more
   {"Csexptypes",                   (DL_FUNC) &r_sexptypes,                 0},

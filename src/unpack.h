@@ -108,6 +108,7 @@ SEXP r_unpack_all(SEXP r_x);
 
 SEXP r_sexptypes();
 SEXP r_to_sexptype(SEXP x);
+const char* to_sexptype(int type, const char * unknown);
 
 // The internals
 unpack_data * unpack_data_prepare(SEXP x);

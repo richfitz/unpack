@@ -382,6 +382,9 @@ void index_pairlist(unpack_data *obj, size_t id) {
 }
 
 rds_index * get_index(SEXP r_ptr, bool closed_error) {
+  if (TYPEOF(r_ptr) != EXTPTRSXP) {
+    Rf_error("Expected an external pointer for 'index'");
+  }
   rds_index * index = (rds_index*)R_ExternalPtrAddr(r_ptr);
   if (closed_error && index == NULL) {
     Rf_error("index has been freed; can't use!");

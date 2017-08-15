@@ -544,48 +544,52 @@ SEXP r_to_sexptype(SEXP x) {
   int * v = INTEGER(x);
   SEXP ret = PROTECT(allocVector(STRSXP, length(x)));
   for (R_xlen_t i = 0; i < length(x); ++i) {
-    const char *name = NULL;
-    switch(v[i]) {
-    case SYMSXP:            name = "SYMSXP";        break;
-    case LISTSXP:           name = "LISTSXP";       break;
-    case CLOSXP:            name = "CLOSXP";        break;
-    case ENVSXP:            name = "ENVSXP";        break;
-    case PROMSXP:           name = "PROMSXP";       break;
-    case LANGSXP:           name = "LANGSXP";       break;
-    case SPECIALSXP:        name = "SPECIALSXP";    break;
-    case BUILTINSXP:        name = "BUILTINSXP";    break;
-    case CHARSXP:           name = "CHARSXP";       break;
-    case LGLSXP:            name = "LGLSXP";        break;
-    case INTSXP:            name = "INTSXP";        break;
-    case REALSXP:           name = "REALSXP";       break;
-    case CPLXSXP:           name = "CPLXSXP";       break;
-    case STRSXP:            name = "STRSXP";        break;
-    case DOTSXP:            name = "DOTSXP";        break;
-    case VECSXP:            name = "VECSXP";        break;
-    case EXPRSXP:           name = "EXPRSXP";       break;
-    case BCODESXP:          name = "BCODESXP";      break;
-    case EXTPTRSXP:         name = "EXTPTRSXP";     break;
-    case WEAKREFSXP:        name = "WEAKREFSXP";    break;
-    case RAWSXP:            name = "RAWSXP";        break;
-    case S4SXP:             name = "S4SXP";         break;
-    case BASEENV_SXP:       name = "BASEENV";       break;
-    case EMPTYENV_SXP:      name = "EMPTYENV";      break;
-    case GENERICREFSXP:     name = "GENERICREFSXP"; break;
-    case CLASSREFSXP:       name = "CLASSREFSXP";   break;
-    case PERSISTSXP:        name = "PERSISTSXP";    break;
-    case PACKAGESXP:        name = "PACKAGESXP";    break;
-    case NAMESPACESXP:      name = "NAMESPACESXP";  break;
-    case BASENAMESPACE_SXP: name = "BASENAMESPACE"; break;
-    case MISSINGARG_SXP:    name = "MISSINGARG";    break;
-    case UNBOUNDVALUE_SXP:  name = "UNBOUNDVALUE";  break;
-    case GLOBALENV_SXP:     name = "GLOBALENV";     break;
-    case NILVALUE_SXP:      name = "NILVALUE";      break;
-    case REFSXP:            name = "REFSXP";        break;
-    }
+    const char *name = to_sexptype(v[i], NULL);
     SET_STRING_ELT(ret, i, name == NULL ? NA_STRING : mkChar(name));
   }
   UNPROTECT(1);
   return ret;
+}
+
+const char* to_sexptype(int type, const char * unknown) {
+  switch(type) {
+  case SYMSXP:            return "SYMSXP";
+  case LISTSXP:           return "LISTSXP";
+  case CLOSXP:            return "CLOSXP";
+  case ENVSXP:            return "ENVSXP";
+  case PROMSXP:           return "PROMSXP";
+  case LANGSXP:           return "LANGSXP";
+  case SPECIALSXP:        return "SPECIALSXP";
+  case BUILTINSXP:        return "BUILTINSXP";
+  case CHARSXP:           return "CHARSXP";
+  case LGLSXP:            return "LGLSXP";
+  case INTSXP:            return "INTSXP";
+  case REALSXP:           return "REALSXP";
+  case CPLXSXP:           return "CPLXSXP";
+  case STRSXP:            return "STRSXP";
+  case DOTSXP:            return "DOTSXP";
+  case VECSXP:            return "VECSXP";
+  case EXPRSXP:           return "EXPRSXP";
+  case BCODESXP:          return "BCODESXP";
+  case EXTPTRSXP:         return "EXTPTRSXP";
+  case WEAKREFSXP:        return "WEAKREFSXP";
+  case RAWSXP:            return "RAWSXP";
+  case S4SXP:             return "S4SXP";
+  case BASEENV_SXP:       return "BASEENV";
+  case EMPTYENV_SXP:      return "EMPTYENV";
+  case GENERICREFSXP:     return "GENERICREFSXP";
+  case CLASSREFSXP:       return "CLASSREFSXP";
+  case PERSISTSXP:        return "PERSISTSXP";
+  case PACKAGESXP:        return "PACKAGESXP";
+  case NAMESPACESXP:      return "NAMESPACESXP";
+  case BASENAMESPACE_SXP: return "BASENAMESPACE";
+  case MISSINGARG_SXP:    return "MISSINGARG";
+  case UNBOUNDVALUE_SXP:  return "UNBOUNDVALUE";
+  case GLOBALENV_SXP:     return "GLOBALENV";
+  case NILVALUE_SXP:      return "NILVALUE";
+  case REFSXP:            return "REFSXP";
+  default:                return unknown;
+  }
 }
 
 void unpack_prepare(SEXP x, unpack_data *obj) {
