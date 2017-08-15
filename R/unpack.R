@@ -22,9 +22,19 @@ to_sexptype <- function(x) {
   .Call(Cto_sexptype, x)
 }
 
-unpack_extract <- function(x, index, id) {
-  .Call(Cunpack_extract, x, index, id)
+unpack_extract <- function(x, index, id, reuse_ref = FALSE) {
+  .Call(Cunpack_extract, x, index, id, reuse_ref)
 }
+
+unpack_index_refs <- function(index) {
+  .Call(Cunpack_index_refs, index)
+}
+
+unpack_index_refs_clear <- function(index) {
+  .Call(Cunpack_index_refs_clear, index)
+  invisible()
+}
+
 unpack_extract_element <- function(x, index, id, i, error_if_missing = TRUE) {
   .Call(Cunpack_extract_element, x, index, id, i, error_if_missing)
 }

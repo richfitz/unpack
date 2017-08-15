@@ -638,9 +638,38 @@ void unpack_check_version(unpack_data *obj) {
 
 // ReadItem
 SEXP unpack_read_item(unpack_data *obj) {
+  size_t id = obj->count++;
+
+  // First, if we have an index and if the object is a reference
+  // object, have a go at pulling it from the set of resolved objects.
+  if (obj->index != NULL) {
+    // It would be more efficient to expose the bits that are needed
+    // here in the index directly I think.  They're used in a couple
+    // of places anyway.  But for now, this is OK and no worse than
+    // what happens if we go all the way through the usual resolution.
+    sexp_info *info_prev = obj->index->index + id;
+    size_t refid = info_prev->refid;
+    if (refid > 0 && info_prev->type != REFSXP) {
+      if (INTEGER(CDR(obj->ref_objects))[refid - 1]) {
+        Rprintf("(unpack_read_item) object %d (ref %d) already extracted\n",
+                info_prev->id, refid);
+        R_xlen_t end = info_prev->end;
+        stream_move_to(obj->stream, end);
+        // TODO: I don't *think* that a reference object can be the
+        // last object in the rds, but this might be worth confirming
+        // or checking here.
+        do {
+          info_prev++;
+        } while (info_prev->end > end);
+        obj->count = info_prev->id + 1;
+        return VECTOR_ELT(CAR(obj->ref_objects), refid - 1);
+      }
+    }
+  }
+
   sexp_info info;
   unpack_flags(unpack_read_integer(obj), &info);
-  info.id = obj->count++;
+  info.id = id;
 
   switch (info.type) {
     // 1. Some singletons:
@@ -755,25 +784,21 @@ void unpack_flags(int flags, sexp_info * info) {
 
 // MakeReadRefTable
 SEXP init_read_ref(rds_index *index) {
-  size_t initial_size = INITIAL_REFREAD_TABLE_SIZE;
-  if (index != NULL) {
-    // NOTE: this needs to be done differently where we have a
-    // refrence objects; loop back up through the data and find the
-    // first (last) element with nonzero refid and type not REFSXP.
-    sexp_info *info = index->index + (index->id - 1);
-    while (info->id > 0) {
-      if (info->refid > 0 && info->type != REFSXP) {
-        initial_size = info->refid;
-        break;
-      }
-      info--;
-    }
-  }
-  SEXP data = allocVector(VECSXP, initial_size);
-  if (index == NULL) { // we use random access for the indexed case
+  SEXP ret;
+  size_t initial_size =
+    index == NULL ? INITIAL_REFREAD_TABLE_SIZE : index->ref_table_count;
+  SEXP data = PROTECT(allocVector(VECSXP, initial_size));
+  if (index == NULL) {
     SET_TRUELENGTH(data, 0);
+    ret = CONS(data, R_NilValue);
+  } else {
+    SEXP read = PROTECT(allocVector(LGLSXP, initial_size));
+    memset(INTEGER(read), 0, initial_size * sizeof(int));
+    ret = CONS(data, read);
+    UNPROTECT(1);
   }
-  return CONS(data, R_NilValue);
+  UNPROTECT(1);
+  return ret;
 }
 
 // GetReadRef
@@ -839,6 +864,7 @@ void add_read_ref(unpack_data *obj, SEXP value, sexp_info *info) {
     SET_TRUELENGTH(data, count);
   } else {
     count = obj->index->index[info->id].refid;
+    INTEGER(CDR(obj->ref_objects))[count - 1] = 1;
   }
   Rprintf("Inserting reference %d to %d\n", count - 1, info->id);
   SET_VECTOR_ELT(data, count - 1, value);

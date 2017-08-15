@@ -274,11 +274,6 @@ test_that("symbol reference", {
   idx <- unpack_index_as_matrix(idx_ptr)
   idx
 
-  ## This is where I am up to; looks like we're almost there but we
-  ## don't actually have to go through the reference table perhaps?
-  ## we're certainly going to need to keep it I would have thought.
-  ## Perhaps not though - in which case revert some of the changes to
-  ## index.c
   res <- unpack_extract_plan(idx_ptr, 8L)
   expect_equal(sum(res), 1L)
   expect_equal(which(res), 4L)
@@ -288,6 +283,23 @@ test_that("symbol reference", {
 
   res <- unpack_extract(x, idx_ptr, 8L)
   expect_identical(res, a[[2]])
+  expect_null(unpack_index_refs(idx_ptr))
+
+  ## Then again, but with some reference reuse
+  res2 <- unpack_extract(x, idx_ptr, 8L, reuse_ref = TRUE)
+  expect_identical(res, res2)
+  expect_identical(unpack_index_refs(idx_ptr),
+                   list(quote(names), quote(class)))
+
+  res3 <- unpack_extract(x, idx_ptr, 8L, reuse_ref = TRUE)
+  res4 <- unpack_extract(x, idx_ptr, 8L, reuse_ref = FALSE)
+  expect_identical(res, res3)
+  expect_identical(res, res4)
+  expect_identical(unpack_index_refs(idx_ptr),
+                   list(quote(names), quote(class)))
+
+  unpack_index_refs_clear(idx_ptr)
+  expect_null(unpack_index_refs(idx_ptr))
 })
 
 ## Try to manufacture a recursive reference case.  If we have a series
@@ -301,6 +313,8 @@ test_that("recursive", {
   e3$a <- 3
   x <- serialize_binary(list(e1, e2, e3))
   idx_ptr <- unpack_index(x, TRUE)
+  expect_null(unpack_index_refs(idx_ptr))
+
   idx <- unpack_index_as_matrix(idx_ptr)
 
   res <- unpack_all(x)
@@ -335,4 +349,35 @@ test_that("recursive", {
   res_p2 <- parent.env(res_p1)
   expect_identical(parent.env(res_p2), emptyenv())
   expect_identical(res_p2$a, 1)
+
+  ## Then some reference reuse:
+  unpack_index_refs_clear(idx_ptr)
+  expect_null(unpack_index_refs(idx_ptr))
+
+  res3 <- unpack_extract(x, idx_ptr, i[[4]] - 1L, reuse_ref = TRUE)
+  refs <- unpack_index_refs(idx_ptr)
+  expect_identical(refs[[4]], res3)
+
+  res2 <- unpack_extract(x, idx_ptr, i[[3]] - 1L, reuse_ref = TRUE)
+  res1 <- unpack_extract(x, idx_ptr, i[[1]] - 1L, reuse_ref = TRUE)
+
+  expect_identical(emptyenv(), parent.env(res1))
+  expect_identical(res1, parent.env(res2))
+  expect_identical(res2, parent.env(res3))
+
+  ## And this is _precicely_ where things get really dangerous;
+  ## modifications after extraction are mirrored through the
+  ## subsequent extractions.
+  res1$x <- pi
+  expect_identical(parent.env(res2)$x, pi)
+  res2_2 <- unpack_extract(x, idx_ptr, i[[3]] - 1L, reuse_ref = TRUE)
+  expect_identical(parent.env(res2_2)$x, pi)
+
+  ## Can still get a fresh copy though
+  res2_3 <- unpack_extract(x, idx_ptr, i[[3]] - 1L, reuse_ref = FALSE)
+  expect_null(parent.env(res2_3)$x)
+
+  ## But then we can continue:
+  expect_identical(unpack_extract(x, idx_ptr, i[[3]] - 1L, reuse_ref = TRUE),
+                   res2)
 })

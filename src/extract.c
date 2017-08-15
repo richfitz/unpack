@@ -54,7 +54,7 @@ void unpack_extract_plan(rds_index *index, size_t id, const sexp_info *focal,
             // recursion.
             Rf_error("I don't think this is possible");
           }
-          Rprintf("we need %d\n", i_ref);
+          Rprintf("we need %d (%d < %d)\n", i_ref, pos, focal->start_object);
           need[i_ref] = true;
           // I don't actually know that this needs to be recursive
           // because these will be resolved in time.  We will loop
@@ -66,7 +66,7 @@ void unpack_extract_plan(rds_index *index, size_t id, const sexp_info *focal,
           // will not be that big a deal!
           if (!seen[i_ref]) {
             Rprintf("recursing...\n");
-            unpack_extract_plan(index, i_ref, focal, seen, need);
+            unpack_extract_plan(index, i_ref, child, seen, need);
           }
         }
       }
@@ -74,14 +74,24 @@ void unpack_extract_plan(rds_index *index, size_t id, const sexp_info *focal,
   }
 }
 
+SEXP r_unpack_index_refs(SEXP r_index) {
+  get_index(r_index, true); // for side effects
+  SEXP refs = R_ExternalPtrProtected(r_index);
+  return refs == R_NilValue ? R_NilValue : CAR(refs);
+}
+
+SEXP r_unpack_index_refs_clear(SEXP r_index) {
+  get_index(r_index, true); // for side effects
+  R_SetExternalPtrProtected(r_index, R_NilValue);
+  return R_NilValue;
+}
+
 // NOTE: This needs some care; it's pretty easy to accidenty return an
 // internal SEXP type (most probably a CHARSXP) so this should be
 // handled nicely.
-SEXP r_unpack_extract(SEXP r_x, SEXP r_index, SEXP r_id) {
+SEXP r_unpack_extract(SEXP r_x, SEXP r_index, SEXP r_id, SEXP r_reuse_ref) {
   size_t id = scalar_size(r_id, "id");
-  if (id == 0) {
-    return r_unpack_all(r_x);
-  }
+  bool reuse_ref = scalar_logical(r_reuse_ref, "reuse_ref");
 
   unpack_data *obj = unpack_data_prepare(r_x);
   obj->index = get_index(r_index, true);
@@ -99,14 +109,38 @@ SEXP r_unpack_extract(SEXP r_x, SEXP r_index, SEXP r_id) {
   memset(seen, 0, len * sizeof(bool));
   memset(need, 0, len * sizeof(bool));
   unpack_extract_plan(obj->index, id, info, seen, need);
-  obj->ref_objects = PROTECT(init_read_ref(obj->index));
+
+  if (reuse_ref) {
+    obj->ref_objects = R_ExternalPtrProtected(r_index);
+  }
+  bool create_ref_objects = obj->ref_objects == R_NilValue;
+  if (create_ref_objects) {
+    obj->ref_objects = PROTECT(init_read_ref(obj->index));
+  }
+
+  int * done = INTEGER(CDR(obj->ref_objects));
   for (size_t i = 0; i < len; ++i) {
     if (need[i]) {
-      unpack_extract(obj, i);
+      size_t j = obj->index->index[i].refid;
+      if (done[j - 1] == 1) {
+        Rprintf("(unpack_extract) object %d (ref %d) already extracted\n",
+                i, j);
+      } else {
+        Rprintf("(unpack_extract) object %d (ref %d) needs extracting...\n",
+                i, j);
+        unpack_extract(obj, i);
+      }
     }
   }
   SEXP ret = unpack_extract(obj, id);
-  UNPROTECT(1);
+
+  if (reuse_ref) {
+    R_SetExternalPtrProtected(r_index, obj->ref_objects);
+  }
+  if (create_ref_objects) {
+    UNPROTECT(1);
+  }
+
   return ret;
 }
 

@@ -54,6 +54,8 @@ typedef struct {
   sexp_info * index;
   size_t id; // id of the *next* object
   size_t len; // capacity
+  // This is basically all reference table stuff, and will not be
+  // present on index *use*, except for ref_table_count
   size_t ref_table_count;
   size_t ref_table_len;
   size_t *ref_table;
@@ -62,10 +64,7 @@ typedef struct {
 typedef struct unpack_data {
   stream_t * stream;
   SEXP ref_objects;
-  // ref_table_sexp_t ref_table_sexp;
-  // ref_table_index_t ref_table_index;
   rds_index *index;
-  bool use_index;
   R_xlen_t count;
 } unpack_data;
 
