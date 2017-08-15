@@ -20,6 +20,7 @@ typedef struct sexp_info {
   // extraction and I might remove them, but am not sure.  They would
   // be better in a second structure that we keep around just for the
   // indexing, I think...
+  R_xlen_t id;
   R_xlen_t length;
   R_xlen_t start_object;
   R_xlen_t start_data;
@@ -65,6 +66,7 @@ typedef struct unpack_data {
   // ref_table_index_t ref_table_index;
   rds_index *index;
   bool use_index;
+  R_xlen_t count;
 } unpack_data;
 
 int unpack_read_char(unpack_data *obj);
@@ -119,8 +121,8 @@ SEXP unpack_inspect_item(unpack_data *obj);
 void unpack_flags(int flags, sexp_info * info);
 void unpack_sexp_info(unpack_data *obj, sexp_info *info);
 
-SEXP init_read_ref();
-SEXP get_read_ref(unpack_data * obj, int index);
+SEXP init_read_ref(rds_index *index);
+SEXP get_read_ref(unpack_data * obj, sexp_info *info, int index);
 void add_read_ref(unpack_data * obj, SEXP value, sexp_info *info);
 
 #endif

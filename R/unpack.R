@@ -14,6 +14,10 @@ unpack_index_as_matrix <- function(x) {
   .Call(Cunpack_index_as_matrix, x)
 }
 
+unpack_extract_plan <- function(index, id) {
+  .Call(Cunpack_extract_plan, index, id)
+}
+
 to_sexptype <- function(x) {
   .Call(Cto_sexptype, x)
 }

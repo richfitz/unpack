@@ -21,7 +21,6 @@ SEXP r_unpack_index(SEXP x, SEXP r_as_ptr) {
 
   index_build(obj, 0);
   stream_check_empty(obj->stream);
-  index->ref_table = NULL;
 
   if (!as_ptr) {
     ret = r_unpack_index_as_matrix(ret);
@@ -38,6 +37,7 @@ SEXP r_unpack_index_as_matrix(SEXP r_ptr) {
 void r_index_finalize(SEXP r_ptr) {
   rds_index * index = get_index(r_ptr, false);
   if (index == NULL) {
+    Free(index->ref_table);
     Free(index->index);
     Free(index);
     R_ClearExternalPtr(r_ptr);
@@ -120,6 +120,7 @@ void index_build(unpack_data *obj, size_t parent) {
   info->start_object = obj->stream->count;
   unpack_flags(unpack_read_integer(obj), info);
   info->parent = parent;
+  info->id = id;
   info->refid = 0; // this is a lie but it does not matter
   info->start_data = obj->stream->count;
   obj->index->id++;
@@ -404,7 +405,7 @@ rds_index * get_index(SEXP r_ptr, bool closed_error) {
 //
 // Lookup
 //
-// .sameas ==> 20
+// .refid ==> 20
 // index[20].refid ==> 2
 // references[2] ==> SEXP
 
@@ -412,8 +413,7 @@ rds_index * get_index(SEXP r_ptr, bool closed_error) {
 void init_read_index_ref(unpack_data *obj) {
   obj->index->ref_table_len = INITIAL_REFREAD_TABLE_SIZE;
   obj->index->ref_table_count = 0;
-  obj->index->ref_table =
-    (size_t*)R_alloc(obj->index->ref_table_len, sizeof(size_t));
+  obj->index->ref_table = (size_t*)Calloc(obj->index->ref_table_len, size_t);
 }
 
 // GetReadRef
@@ -441,11 +441,9 @@ void add_read_index_ref(unpack_data *obj, size_t id) {
   if (count >= obj->index->ref_table_len) {
     Rprintf("Growing reference index\n");
     obj->index->ref_table_len *= 2;
-    size_t *prev = obj->index->ref_table;
     obj->index->ref_table =
-      (size_t*) R_alloc(obj->index->ref_table_len, sizeof(size_t));
-    memcpy(obj->index->ref_table, prev,
-           obj->index->ref_table_len * sizeof(size_t));
+      (size_t*) Realloc(obj->index->ref_table, obj->index->ref_table_len,
+                        size_t);
   }
   obj->index->index[id].refid = count + 1;
   obj->index->ref_table[count] = id;

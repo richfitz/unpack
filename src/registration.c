@@ -12,6 +12,12 @@ static const R_CallMethodDef call_methods[] = {
   {"Cunpack_index",                (DL_FUNC) &r_unpack_index,              2},
   {"Cunpack_index_as_matrix",      (DL_FUNC) &r_unpack_index_as_matrix,    1},
 
+  // extract plan
+  {"Cunpack_extract_plan",         (DL_FUNC) &r_unpack_extract_plan,       2},
+
+  // extract
+  {"Cunpack_extract",              (DL_FUNC) &r_unpack_extract,            3},
+
   /*
   // find things
   {"Cindex_find_id",               (DL_FUNC) &r_index_find_id,             3},

@@ -401,7 +401,7 @@ SEXP unpack_read_ref(unpack_data *obj, sexp_info *info) {
   // resolution recursively that won't happen (but I think that a plan
   // is a better bet).
   int index = unpack_read_ref_index(obj, info);
-  return get_read_ref(obj, index);
+  return get_read_ref(obj, info, index);
 }
 
 SEXP unpack_read_persist(unpack_data *obj, sexp_info *info) {
@@ -443,12 +443,13 @@ unpack_data * unpack_data_prepare(SEXP x) {
   unpack_prepare(x, obj);
   obj->ref_objects = R_NilValue;
   obj->index = NULL;
+  obj->count = 0;
   return obj;
 }
 
 SEXP r_unpack_all(SEXP r_x) {
   unpack_data *obj = unpack_data_prepare(r_x);
-  obj->ref_objects = PROTECT(init_read_ref(INITIAL_REFREAD_TABLE_SIZE));
+  obj->ref_objects = PROTECT(init_read_ref(NULL));
   SEXP ret = PROTECT(unpack_read_item(obj));
   stream_check_empty(obj->stream);
   UNPROTECT(2);
@@ -639,6 +640,7 @@ void unpack_check_version(unpack_data *obj) {
 SEXP unpack_read_item(unpack_data *obj) {
   sexp_info info;
   unpack_flags(unpack_read_integer(obj), &info);
+  info.id = obj->count++;
 
   switch (info.type) {
     // 1. Some singletons:
@@ -752,21 +754,50 @@ void unpack_flags(int flags, sexp_info * info) {
 }
 
 // MakeReadRefTable
-SEXP init_read_ref(size_t initial_size) {
+SEXP init_read_ref(rds_index *index) {
+  size_t initial_size = INITIAL_REFREAD_TABLE_SIZE;
+  if (index != NULL) {
+    // NOTE: this needs to be done differently where we have a
+    // refrence objects; loop back up through the data and find the
+    // first (last) element with nonzero refid and type not REFSXP.
+    sexp_info *info = index->index + (index->id - 1);
+    while (info->id > 0) {
+      if (info->refid > 0 && info->type != REFSXP) {
+        initial_size = info->refid;
+        break;
+      }
+      info--;
+    }
+  }
   SEXP data = allocVector(VECSXP, initial_size);
-  SET_TRUELENGTH(data, 0);
+  if (index == NULL) { // we use random access for the indexed case
+    SET_TRUELENGTH(data, 0);
+  }
   return CONS(data, R_NilValue);
 }
 
 // GetReadRef
-SEXP get_read_ref(unpack_data *obj, int index) {
+SEXP get_read_ref(unpack_data *obj, sexp_info *info, int index) {
+  int i;
   SEXP data = CAR(obj->ref_objects);
-  int i = index - 1;
-  Rprintf("Retrieving reference %d\n", i);
-  if (i < 0 || i >= LENGTH(data)) {
-    Rf_error("reference index out of range");
+  if (obj->index == NULL) {
+    i = index - 1;
+    if (i < 0 || i >= LENGTH(data)) {
+      Rf_error("reference index out of range");
+    }
+  } else {
+    size_t true_id = obj->index->index[info->id].refid;
+    size_t index = obj->index->index[true_id].refid;
+    Rprintf("object %d is reqesting %d resolved as %d\n",
+            info->id, index, true_id);
+    i = index - 1;
   }
-  return VECTOR_ELT(data, i);
+  Rprintf("Retrieving reference %d\n", i);
+  SEXP ret = VECTOR_ELT(data, i);
+  if (ret == R_NilValue) {
+    Rf_error("failure in pulling things out");
+  }
+  return ret;
 }
 
 // AddReadRef
@@ -807,11 +838,9 @@ void add_read_ref(unpack_data *obj, SEXP value, sexp_info *info) {
     }
     SET_TRUELENGTH(data, count);
   } else {
-    Rf_error("untested");
-    // I think that this needs a little work
-    count = obj->index->index[info->refid].refid + 1;
+    count = obj->index->index[info->id].refid;
   }
-  Rprintf("Inserting reference %d\n", count - 1);
+  Rprintf("Inserting reference %d to %d\n", count - 1, info->id);
   SET_VECTOR_ELT(data, count - 1, value);
 }
 
