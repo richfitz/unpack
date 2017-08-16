@@ -452,3 +452,15 @@ void add_read_index_ref(unpack_data *obj, size_t id) {
   obj->index->ref_table[count] = id;
   Rprintf("Inserting reference %d (refid %d)\n", count, id);
 }
+
+SEXP r_unpack_index_refs(SEXP r_index) {
+  get_index(r_index, true); // for side effects
+  SEXP refs = R_ExternalPtrProtected(r_index);
+  return refs == R_NilValue ? R_NilValue : CAR(refs);
+}
+
+SEXP r_unpack_index_refs_clear(SEXP r_index) {
+  get_index(r_index, true); // for side effects
+  R_SetExternalPtrProtected(r_index, R_NilValue);
+  return R_NilValue;
+}

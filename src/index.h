@@ -35,4 +35,7 @@ void init_read_index_ref(unpack_data *obj);
 int get_read_index_ref(unpack_data *obj, int idx);
 void add_read_index_ref(unpack_data *obj, size_t value);
 
+SEXP r_unpack_index_refs(SEXP r_index);
+SEXP r_unpack_index_refs_clear(SEXP r_index);
+
 #endif

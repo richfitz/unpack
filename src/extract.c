@@ -74,35 +74,23 @@ void unpack_extract_plan(rds_index *index, size_t id, const sexp_info *focal,
   }
 }
 
-SEXP r_unpack_index_refs(SEXP r_index) {
-  get_index(r_index, true); // for side effects
-  SEXP refs = R_ExternalPtrProtected(r_index);
-  return refs == R_NilValue ? R_NilValue : CAR(refs);
-}
-
-SEXP r_unpack_index_refs_clear(SEXP r_index) {
-  get_index(r_index, true); // for side effects
-  R_SetExternalPtrProtected(r_index, R_NilValue);
-  return R_NilValue;
-}
-
 // NOTE: This needs some care; it's pretty easy to accidenty return an
 // internal SEXP type (most probably a CHARSXP) so this should be
 // handled nicely.
 SEXP r_unpack_extract(SEXP r_x, SEXP r_index, SEXP r_id, SEXP r_reuse_ref) {
   size_t id = scalar_size(r_id, "id");
   bool reuse_ref = scalar_logical(r_reuse_ref, "reuse_ref");
-
   unpack_data *obj = unpack_data_prepare(r_x);
   obj->index = get_index(r_index, true);
-
-  // TODO: duplication with above, and this is something that will be
-  // needed quite a bit.  Probably it all runs together though to the
-  // resolution (As unpack_extract_resolve).  Or rewrite to return bool*
-  size_t len = obj->index->id;
-  if (id > len - 1)  {
+  if (id > obj->index->id - 1)  {
     Rf_error("id is out of bounds (%d / %d)", id, obj->index->id - 1);
   }
+  return unpack_extract(obj, id, reuse_ref, r_index);
+}
+
+SEXP unpack_extract(unpack_data *obj, size_t id, bool reuse_ref,
+                    SEXP r_index) {
+  size_t len = obj->index->id;
   sexp_info * info = obj->index->index + id;
   bool *seen = (bool*) R_alloc(len, sizeof(bool));
   bool *need = (bool*) R_alloc(len, sizeof(bool));
@@ -128,11 +116,11 @@ SEXP r_unpack_extract(SEXP r_x, SEXP r_index, SEXP r_id, SEXP r_reuse_ref) {
       } else {
         Rprintf("(unpack_extract) object %d (ref %d) needs extracting...\n",
                 i, j);
-        unpack_extract(obj, i);
+        unpack_extract1(obj, i);
       }
     }
   }
-  SEXP ret = unpack_extract(obj, id);
+  SEXP ret = unpack_extract1(obj, id);
 
   if (reuse_ref) {
     R_SetExternalPtrProtected(r_index, obj->ref_objects);
@@ -144,7 +132,7 @@ SEXP r_unpack_extract(SEXP r_x, SEXP r_index, SEXP r_id, SEXP r_reuse_ref) {
   return ret;
 }
 
-SEXP unpack_extract(unpack_data *obj, size_t id) {
+SEXP unpack_extract1(unpack_data *obj, size_t id) {
   stream_move_to(obj->stream, obj->index->index[id].start_object);
   obj->count = id;
   return unpack_read_item(obj);

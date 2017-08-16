@@ -8,7 +8,6 @@ test_that("search_attribute", {
   idx_ptr <- unpack_index(xb, TRUE)
   idx <- unpack_index_as_matrix(idx_ptr)
 
-  ## Hell yes:
   i_c <- index_search_attribute(xb, idx_ptr, 0L, "class")
   i_n <- index_search_attribute(xb, idx_ptr, 0L, "names")
   i_x <- index_search_attribute(xb, idx_ptr, 0L, "x")
