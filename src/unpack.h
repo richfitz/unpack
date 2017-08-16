@@ -101,6 +101,7 @@ SEXP unpack_read_item(unpack_data *obj);
 // Stream bits:
 void stream_advance(stream_t *stream, R_xlen_t len);
 void stream_move_to(stream_t *stream, R_xlen_t len);
+void * stream_at(stream_t *stream, R_xlen_t len);
 void stream_check_empty(stream_t *stream);
 
 // The interface:
@@ -124,5 +125,8 @@ void unpack_sexp_info(unpack_data *obj, sexp_info *info);
 SEXP init_read_ref(rds_index *index);
 SEXP get_read_ref(unpack_data * obj, sexp_info *info, int index);
 void add_read_ref(unpack_data * obj, SEXP value, sexp_info *info);
+
+size_t unpack_write_string(unpack_data *obj, const char *s, size_t s_len,
+                           const char **value);
 
 #endif

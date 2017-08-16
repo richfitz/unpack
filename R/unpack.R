@@ -59,6 +59,6 @@ index_find_attributes <- function(index, id) {
 index_search_attribute <- function(x, index, id, name) {
   .Call(Cindex_search_attribute, x, index, id, name)
 }
-index_search_charsxp <- function(x, index, id, name) {
-  .Call(Cindex_search_charsxp, x, index, id, name)
+index_search_character <- function(x, index, id, name) {
+  .Call(Cindex_search_character, x, index, id, name)
 }

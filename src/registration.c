@@ -33,7 +33,7 @@ static const R_CallMethodDef call_methods[] = {
 
   // search for things
   {"Cindex_search_attribute",      (DL_FUNC) &r_index_search_attribute,    4},
-  {"Cindex_search_charsxp",        (DL_FUNC) &r_index_search_charsxp,      4},
+  {"Cindex_search_character",      (DL_FUNC) &r_index_search_character,    4},
 
   // more
   {"Csexptypes",                   (DL_FUNC) &r_sexptypes,                 0},

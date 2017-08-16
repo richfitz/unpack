@@ -431,6 +431,13 @@ void stream_move_to(stream_t *stream, R_xlen_t pos) {
   stream->count = pos;
 }
 
+void * stream_at(stream_t *stream, R_xlen_t pos) {
+  if (pos > stream->size) {
+    Rf_error("stream overflow");
+  }
+  return stream->buf + pos;
+}
+
 void stream_check_empty(stream_t *stream) {
   if (stream->count != stream->size) {
     Rf_error("Did not consume all of raw vector: %d bytes left",
@@ -888,4 +895,19 @@ static SEXP R_FindNamespace1(SEXP info)
   val = eval(expr, R_GlobalEnv);
   UNPROTECT(3);
   return val;
+}
+
+size_t unpack_write_string(unpack_data *obj, const char *s, size_t s_len,
+                           const char **value) {
+  switch (obj->stream->format) {
+  case BINARY:
+  case XDR:
+    *value = s;
+    return s_len;
+  case ASCII:
+  default:
+    Rf_error("Unimplemented (unpack_write_string)");
+    *value = NULL;
+    return 0;
+  }
 }

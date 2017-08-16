@@ -22,10 +22,14 @@ size_t scalar_size(SEXP x, const char *name) {
 }
 
 const char * scalar_character(SEXP x, const char * name) {
+  assert_scalar_character(x, name);
+  return CHAR(STRING_ELT(x, 0));
+}
+
+void assert_scalar_character(SEXP x, const char *name) {
   if (TYPEOF(x) != STRSXP || length(x) != 1) {
     Rf_error("Expected a scalar character for '%s'", name);
   }
-  return CHAR(STRING_ELT(x, 0));
 }
 
 bool same_string(const char *a, const char *b, size_t len_a, size_t len_b) {

@@ -11,6 +11,7 @@ int index_find_element(rds_index *index, size_t id, size_t i);
 int index_find_element_list(rds_index *index, size_t id, size_t i);
 
 int index_find_nth_child(rds_index *index, size_t id, size_t n);
+int index_find_next_child(rds_index *index, size_t id, size_t at);
 int index_find_car(rds_index * index, int id);
 int index_find_cdr(rds_index * index, int id);
 int index_find_attributes(rds_index * index, int id);

@@ -48,3 +48,19 @@ test_that("attribute redirect", {
   expect_identical(unpack_extract(xb, idx_ptr, i2_n), names(inner))
   expect_identical(i2_x, NA_integer_)
 })
+
+test_that("search_character", {
+  x <- 1:5
+  attr(x, "class") <- "mything"
+  names(x) <- c("one", "two", "three", "four", "five")
+  xb <- serialize_binary(x)
+  idx_ptr <- unpack_index(xb, TRUE)
+  idx <- unpack_index_as_matrix(idx_ptr)
+  i <- index_search_attribute(xb, idx_ptr, 0L, "names")
+
+  for (j in seq_along(x)) {
+    expect_identical(index_search_character(xb, idx_ptr, i, names(x)[[j]]), j)
+  }
+  expect_identical(index_search_character(xb, idx_ptr, i, "seven"),
+                   NA_integer_)
+})

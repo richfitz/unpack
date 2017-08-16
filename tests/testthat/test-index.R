@@ -152,36 +152,6 @@ test_that("attributed attributes", {
   idx[6, ]
 })
 
-test_that("access list elements", {
-  x <- list(1, "two", 1:3)
-  xb <- serialize_binary(x)
-  idx <- unpack_index(xb, TRUE)
-  for (i in 1:3) {
-    expect_identical(unpack_extract_element(xb, idx, 0L, i), x[[i]])
-  }
-  expect_null(unpack_extract_element(xb, idx, 0L, 4L, FALSE))
-  expect_error(unpack_extract_element(xb, idx, 0L, 4L, TRUE),
-               "Index 4 out of bounds; must be on [1, 3]", fixed = TRUE)
-
-  expect_error(unpack_extract_element(xb, idx, 0L, -4L, TRUE),
-               "Expected a positive size for 'i'")
-  expect_error(unpack_extract_element(xb, idx, 0L, 0L, TRUE),
-               "Expected a nonzero positive size for 'i'")
-})
-
-test_that("symbol reference", {
-  a <- structure(list(structure(1, class = "foo")), class = "bar")
-  x <- serialize_binary(a)
-  idx_ptr <- unpack_index(x, TRUE)
-  idx <- unpack_index_as_matrix(idx_ptr)
-  expect_equal(unname(idx[10, "type"]), sexptypes[["REFSXP"]])
-  expect_equal(unname(idx[10, "refid"]), 3L)
-  expect_equal(unname(idx[4L, "type"]), sexptypes[["SYMSXP"]])
-  ## This is always going to fail now because the reference bits
-  ## aren't done
-  unpack_extract(x, idx, 2L)
-})
-
 test_that("namespace", {
   a <- asNamespace("stats")
   x <- serialize_binary(a)

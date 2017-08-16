@@ -65,21 +65,29 @@ int index_find_element_list(rds_index *index, size_t id, size_t i) {
   return index_find_nth_child(index, id, i); // NOTE: naturally base-1
 }
 
+// NOTE: This is base-1 index!
 int index_find_nth_child(rds_index *index, size_t id, size_t n) {
-  size_t found = 0;
-  size_t i = id, last = index->id - 1;
-  R_xlen_t end = index->index[i].end;
-  sexp_info *info = index->index + id;
+  size_t at = id;
+  for (size_t i = 0; i < n; ++i) {
+    int j = index_find_next_child(index, id, at);
+    if (j == NA_INTEGER) {
+      return NA_INTEGER;
+    }
+    at = j;
+  }
+  return at;
+}
+
+int index_find_next_child(rds_index *index, size_t id, size_t at) {
+  R_xlen_t last = index->id - 1;
+  R_xlen_t end = index->index[id].end;
+  sexp_info *info = index->index + at;
   do {
     info++;
-    i++;
     if (info->parent == (R_xlen_t)id) {
-      found++;
+      return info->id;
     }
-    if (found == n) {
-      return i;
-    }
-  } while(i < last && info->start_object < end);
+  } while(info->id < last && info->start_object < end);
   return NA_INTEGER;
 }
 
