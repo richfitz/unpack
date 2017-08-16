@@ -18,3 +18,16 @@ test_that("find_element: simple", {
   expect_error(index_find_element(idx_ptr, 1L, 1L),
                "Cannot index into a REALSXP")
 })
+
+test_that("find_attributes", {
+  x <- list(a = 1, b = 2, c = 3)
+  b <- serialize_binary(x)
+  idx_ptr <- unpack_index(b, TRUE)
+  idx <- unpack_index_as_matrix(idx_ptr)
+
+  i <- index_find_attributes(idx_ptr, 0L)
+  expect_identical(i, 4L)
+  expect_equal(to_sexptype(idx[i + 1, "type"]), "LISTSXP")
+
+  expect_identical(index_find_attributes(idx_ptr, 1L), NA_integer_)
+})

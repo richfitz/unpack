@@ -2,6 +2,7 @@
 #include "index.h"
 #include "extract.h"
 #include "find.h"
+#include "search.h"
 
 #include <R_ext/Rdynload.h>
 #include <Rversion.h>
@@ -30,7 +31,9 @@ static const R_CallMethodDef call_methods[] = {
   {"Cindex_find_attributes",       (DL_FUNC) &r_index_find_attributes,     2},
   {"Cindex_find_id",               (DL_FUNC) &r_index_find_id,             3},
 
-  //{"Cindex_find_attribute",        (DL_FUNC) &r_index_find_attribute,      4},
+  // search for things
+  {"Cindex_search_attribute",      (DL_FUNC) &r_index_search_attribute,    4},
+  {"Cindex_search_charsxp",        (DL_FUNC) &r_index_search_charsxp,      4},
 
   // more
   {"Csexptypes",                   (DL_FUNC) &r_sexptypes,                 0},

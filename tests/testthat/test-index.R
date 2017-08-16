@@ -144,25 +144,6 @@ test_that("attributes", {
                charToRaw("names"))
 })
 
-test_that("multiple attributes", {
-  x <- 1:5
-  attr(x, "class") <- "mything"
-  names(x) <- c("one", "two", "three", "four", "five")
-  xb <- serialize_binary(x)
-  idx_ptr <- unpack_index(xb, TRUE)
-  idx <- unpack_index_as_matrix(idx_ptr)
-
-  ## Hell yes:
-  i_c <- index_find_attribute(idx_ptr, 0L, "class", xb)
-  i_n <- index_find_attribute(idx_ptr, 0L, "names", xb)
-  i_x <- index_find_attribute(idx_ptr, 0L, "x", xb)
-  expect_equal(i_c, 4L)
-  expect_equal(i_n, 9L)
-  expect_equal(i_x, NA_integer_)
-
-  expect_identical(unpack_extract(xb, idx_ptr, i_c), class(x))
-  expect_identical(unpack_extract(xb, idx_ptr, i_n), names(x))
-})
 
 test_that("attributed attributes", {
   x <- structure(pi, a = 1, bar = 2)
