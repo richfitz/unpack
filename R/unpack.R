@@ -62,3 +62,8 @@ index_search_attribute <- function(x, index, id, name) {
 index_search_character <- function(x, index, id, name) {
   .Call(Cindex_search_character, x, index, id, name)
 }
+
+## Pick
+unpack_pick_attributes <- function(x, index, id = 0L, reuse_ref = FALSE) {
+  .Call(Cunpack_pick_attributes, x, index, id, reuse_ref)
+}

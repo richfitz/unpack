@@ -3,6 +3,7 @@
 #include "extract.h"
 #include "find.h"
 #include "search.h"
+#include "pick.h"
 
 #include <R_ext/Rdynload.h>
 #include <Rversion.h>
@@ -34,6 +35,9 @@ static const R_CallMethodDef call_methods[] = {
   // search for things
   {"Cindex_search_attribute",      (DL_FUNC) &r_index_search_attribute,    4},
   {"Cindex_search_character",      (DL_FUNC) &r_index_search_character,    4},
+
+  // pick things
+  {"Cunpack_pick_attributes",      (DL_FUNC) &r_unpack_pick_attributes,    4},
 
   // more
   {"Csexptypes",                   (DL_FUNC) &r_sexptypes,                 0},
