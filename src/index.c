@@ -17,7 +17,7 @@ static void r_index_finalize(SEXP r_ptr);
 
 // this probably mixes up two, or three, functions
 SEXP r_index_build(SEXP r_x) {
-  unpack_data *obj = unpack_data_create(r_x);
+  unpack_data_t *obj = unpack_data_create(r_x);
 
   rds_index_t *index = (rds_index_t*) Calloc(1, rds_index_t);
   SEXP prot = PROTECT(R_MakeExternalPtr(index, R_NilValue, R_NilValue));
@@ -70,15 +70,16 @@ void index_grow(rds_index_t *index) {
     // are live.  So index_build could return true/false or we need to
     // be careful when storing pointers from index.
   }
-  index->objects = (sexp_info*) Realloc(index->objects, index->len, sexp_info);
+  index->objects =
+    (sexp_info_t*) Realloc(index->objects, index->len, sexp_info_t);
 }
 
-void index_item(unpack_data *obj, size_t parent) {
+void index_item(unpack_data_t *obj, size_t parent) {
   if (obj->count == obj->index->len) {
     index_grow(obj->index);
   }
   size_t id = obj->count;
-  sexp_info *info = obj->index->objects + id;
+  sexp_info_t *info = obj->index->objects + id;
   info->start_object = obj->buffer->pos;
   unpack_flags(buffer_read_integer(obj->buffer), info);
   info->parent = parent;
@@ -182,8 +183,8 @@ void index_item(unpack_data *obj, size_t parent) {
   }
 }
 
-void index_vector(unpack_data *obj, size_t id, size_t element_size) {
-  sexp_info *info = obj->index->objects + id;
+void index_vector(unpack_data_t *obj, size_t id, size_t element_size) {
+  sexp_info_t *info = obj->index->objects + id;
   info->length = buffer_read_length(obj->buffer);
   info->start_data = obj->buffer->pos;
   switch (obj->buffer->format) {
@@ -198,11 +199,11 @@ void index_vector(unpack_data *obj, size_t id, size_t element_size) {
   index_attributes(obj, id);
 }
 
-void index_vector_character(unpack_data *obj, size_t id) {
+void index_vector_character(unpack_data_t *obj, size_t id) {
   index_vector_generic(obj, id);
 }
 
-void index_vector_generic(unpack_data *obj, size_t id) {
+void index_vector_generic(unpack_data_t *obj, size_t id) {
   obj->index->objects[id].length = buffer_read_length(obj->buffer);
   obj->index->objects[id].start_data = obj->buffer->pos;
   for (R_xlen_t i = 0; i < obj->index->objects[id].length; ++i) {
@@ -211,7 +212,7 @@ void index_vector_generic(unpack_data *obj, size_t id) {
   index_attributes(obj, id);
 }
 
-void index_symbol(unpack_data *obj, size_t id) {
+void index_symbol(unpack_data_t *obj, size_t id) {
   obj->index->objects[id].length = 1;
   index_item(obj, id);
   obj->index->objects[id].start_attr = obj->buffer->pos;
@@ -219,7 +220,7 @@ void index_symbol(unpack_data *obj, size_t id) {
   add_read_index_ref(obj, id);
 }
 
-void index_pairlist(unpack_data *obj, size_t id) {
+void index_pairlist(unpack_data_t *obj, size_t id) {
   obj->index->objects[id].length = 1; // pairlist always have one element
   obj->index->objects[id].start_attr = obj->buffer->pos;
   if (obj->index->objects[id].has_attr) {
@@ -240,8 +241,8 @@ void index_pairlist(unpack_data *obj, size_t id) {
   obj->index->objects[id].end = obj->buffer->pos;
 }
 
-void index_charsxp(unpack_data *obj, size_t id) {
-  sexp_info *info = obj->index->objects + id;
+void index_charsxp(unpack_data_t *obj, size_t id) {
+  sexp_info_t *info = obj->index->objects + id;
   // NOTE: *not* read_length() because limited to 2^32 - 1
   info->length = buffer_read_integer(obj->buffer);
   info->start_data = obj->buffer->pos;
@@ -251,8 +252,8 @@ void index_charsxp(unpack_data *obj, size_t id) {
   index_attributes(obj, id);
 }
 
-void index_ref(unpack_data *obj, size_t id) {
-  sexp_info *info = obj->index->objects + id;
+void index_ref(unpack_data_t *obj, size_t id) {
+  sexp_info_t *info = obj->index->objects + id;
   int idx = unpack_read_ref_index(obj, info);
   info->length = 0;
   info->start_data = obj->buffer->pos;
@@ -261,17 +262,17 @@ void index_ref(unpack_data *obj, size_t id) {
   info->refid = get_read_index_ref(obj, idx);
 }
 
-void index_package(unpack_data *obj, size_t id) {
+void index_package(unpack_data_t *obj, size_t id) {
   index_persistent_string(obj, id);
   add_read_index_ref(obj, id);
 }
 
-void index_namespace(unpack_data *obj, size_t id) {
+void index_namespace(unpack_data_t *obj, size_t id) {
   index_persistent_string(obj, id);
   add_read_index_ref(obj, id);
 }
 
-void index_environment(unpack_data *obj, size_t id) {
+void index_environment(unpack_data_t *obj, size_t id) {
   obj->index->objects[id].length = 1;
   buffer_read_integer(obj->buffer); // locked/unlocked (TODO: advance_integer instead?)
   add_read_index_ref(obj, id);
@@ -284,7 +285,7 @@ void index_environment(unpack_data *obj, size_t id) {
   obj->index->objects[id].end = obj->buffer->pos;
 }
 
-void index_extptr(unpack_data *obj, size_t id) {
+void index_extptr(unpack_data_t *obj, size_t id) {
   obj->index->objects[id].length = 1;
   add_read_index_ref(obj, id);
   index_item(obj, id); // prot
@@ -292,7 +293,7 @@ void index_extptr(unpack_data *obj, size_t id) {
   index_attributes(obj, id);
 }
 
-void index_weakref(unpack_data *obj, size_t id) {
+void index_weakref(unpack_data_t *obj, size_t id) {
   obj->index->objects[id].length = 1;
   add_read_index_ref(obj, id);
   index_attributes(obj, id);
@@ -300,7 +301,7 @@ void index_weakref(unpack_data *obj, size_t id) {
 
 // almost the same as the index_persistent_character, but with one
 // extra integer read and no attribute check
-void index_persistent_string(unpack_data *obj, size_t id) {
+void index_persistent_string(unpack_data_t *obj, size_t id) {
   if (buffer_read_integer(obj->buffer) != 0) {
     // This is an R limitation
     Rf_error("names in persistent strings are not supported yet");
@@ -315,8 +316,8 @@ void index_persistent_string(unpack_data *obj, size_t id) {
   obj->index->objects[id].end = obj->buffer->pos;
 }
 
-void index_attributes(unpack_data *obj, size_t id) {
-  sexp_info *info = obj->index->objects + id;
+void index_attributes(unpack_data_t *obj, size_t id) {
+  sexp_info_t *info = obj->index->objects + id;
   info->start_attr = obj->buffer->pos;
   if (info->type == CHARSXP) {
     if (info->has_attr) {
@@ -360,7 +361,7 @@ SEXP init_read_index_ref() {
 }
 
 // GetReadRef
-int get_read_index_ref(unpack_data *obj, int idx) {
+int get_read_index_ref(unpack_data_t *obj, int idx) {
   SEXP data = CAR(obj->ref_objects);
   int i = idx - 1;
   if (i < 0 || (size_t)i >= obj->index->n_refs) {
@@ -372,7 +373,7 @@ int get_read_index_ref(unpack_data *obj, int idx) {
 }
 
 // AddReadRef
-void add_read_index_ref(unpack_data *obj, size_t id) {
+void add_read_index_ref(unpack_data_t *obj, size_t id) {
   // used by:
   // - [x] SYMSXP
   // - [ ] PERSISTSXP
@@ -424,7 +425,7 @@ SEXP index_as_matrix(const rds_index_t *index) {
   setAttrib(ret, R_DimNamesSymbol, dns);
 
   for (size_t i = 0; i < n; ++i) {
-    sexp_info *info = index->objects + i;
+    sexp_info_t *info = index->objects + i;
     id[i]           = i;
     parent[i]       = info->parent;
     type[i]         = info->type;

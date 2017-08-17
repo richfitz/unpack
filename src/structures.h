@@ -25,7 +25,7 @@ typedef struct {
   serialisation_format format;
 } buffer_t;
 
-typedef struct sexp_info {
+typedef struct {
   int flags;
   SEXPTYPE type;
   int levels;
@@ -50,12 +50,12 @@ typedef struct sexp_info {
   bool is_object;
   bool has_attr;
   bool has_tag;
-} sexp_info;
+} sexp_info_t;
 
 // This is our index; it is not a big object.
 typedef struct {
   // A vector of useful indices
-  sexp_info *objects;
+  sexp_info_t *objects;
   // The length of 'objects'
   R_xlen_t len;
   // The number of references (this can be computed from objects/len
@@ -74,7 +74,7 @@ typedef struct {
   SEXP ref_objects;
 } rdsi_t;
 
-typedef struct unpack_data {
+typedef struct {
   // The actual data to read
   buffer_t * buffer;
   // Storage for reference objects. Stored as a protected pairlist
@@ -87,10 +87,10 @@ typedef struct unpack_data {
   rds_index_t *index;
 
   // The object position in the stream.  This is used to assign the
-  // next object id into a sexp_info (which is then used to organise
+  // next object id into a sexp_info_t (which is then used to organise
   // the reference table) and used when reading so that we can skip
   // ahead over bits that we have already read.
   R_xlen_t count;
-} unpack_data;
+} unpack_data_t;
 
 #endif

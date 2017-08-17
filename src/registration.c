@@ -1,7 +1,9 @@
 #include "unpack.h"
-#include "helpers.h"
-/*
 #include "index.h"
+#include "rdsi.h"
+#include "helpers.h"
+
+/*
 #include "extract.h"
 #include "find.h"
 #include "search.h"
@@ -14,11 +16,16 @@
 static const R_CallMethodDef call_methods[] = {
   // wrapper
   {"Cunpack_all",                  (DL_FUNC) &r_unpack_all,                1},
-  /*
-  // index
-  {"Cunpack_index",                (DL_FUNC) &r_unpack_index,              2},
-  {"Cunpack_index_as_matrix",      (DL_FUNC) &r_unpack_index_as_matrix,    1},
 
+  // index
+  {"Cindex_build",                 (DL_FUNC) &r_index_build,               2},
+
+  // rdsi
+  {"Crdsi_get_index_as_matrix",    (DL_FUNC) &r_rdsi_get_index_as_matrix,  1},
+  {"Crdsi_get_refs",               (DL_FUNC) &r_rdsi_get_refs,             1},
+  {"Crdsi_clear_refs",             (DL_FUNC) &r_rdsi_clear_refs,           1},
+
+  /*
   // extract plan
   {"Cunpack_extract_plan",         (DL_FUNC) &r_unpack_extract_plan,       2},
 

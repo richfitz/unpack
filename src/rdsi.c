@@ -54,18 +54,18 @@ SEXP rdsi_get_data(SEXP r_ptr) {
   return ret;
 }
 
-SEXP rdsi_get_index_as_matrix(SEXP r_ptr) {
+SEXP r_rdsi_get_index_as_matrix(SEXP r_ptr) {
   rdsi_t *rdsi = get_rdsi(r_ptr, true);
   return index_as_matrix(rdsi->index);
 }
 
-SEXP rdsi_get_refs(SEXP r_ptr) {
+SEXP r_rdsi_get_refs(SEXP r_ptr) {
   get_rdsi(r_ptr, true); // for side effects
   SEXP refs = CDR(R_ExternalPtrProtected(r_ptr));
   return refs == R_NilValue ? R_NilValue : CAR(refs);
 }
 
-SEXP r_unpack_index_refs_clear(SEXP r_ptr) {
+SEXP r_rdsi_clear_refs(SEXP r_ptr) {
   get_index(r_ptr, true); // for side effects
   SEXP prot = R_ExternalPtrProtected(r_ptr);
   SETCDR(prot, R_NilValue);

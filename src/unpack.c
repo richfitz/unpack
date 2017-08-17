@@ -6,7 +6,7 @@ static SEXP R_FindNamespace1(SEXP info);
 
 // R interface
 SEXP r_unpack_all(SEXP r_x) {
-  unpack_data *obj = unpack_data_create(r_x);
+  unpack_data_t *obj = unpack_data_create(r_x);
   obj->ref_objects = PROTECT(init_read_ref(NULL));
   SEXP ret = PROTECT(unpack_read_item(obj));
   buffer_check_empty(obj->buffer);
@@ -15,7 +15,7 @@ SEXP r_unpack_all(SEXP r_x) {
 }
 
 // ReadItem
-SEXP unpack_read_item(unpack_data *obj) {
+SEXP unpack_read_item(unpack_data_t *obj) {
   size_t id = obj->count++;
 
   // First, if we have an index and if the object is a reference
@@ -25,7 +25,7 @@ SEXP unpack_read_item(unpack_data *obj) {
     // here in the index directly I think.  They're used in a couple
     // of places anyway.  But for now, this is OK and no worse than
     // what happens if we go all the way through the usual resolution.
-    sexp_info *info_prev = obj->index->objects + id;
+    sexp_info_t *info_prev = obj->index->objects + id;
     size_t refid = info_prev->refid;
     if (refid > 0 && info_prev->type != REFSXP) {
       if (INTEGER(CDR(obj->ref_objects))[refid - 1]) {
@@ -45,7 +45,7 @@ SEXP unpack_read_item(unpack_data *obj) {
     }
   }
 
-  sexp_info info;
+  sexp_info_t info;
   unpack_flags(buffer_read_integer(obj->buffer), &info);
   info.id = id;
 
@@ -134,7 +134,7 @@ SEXP unpack_read_item(unpack_data *obj) {
 }
 
 // InIntegerVec
-SEXP unpack_read_vector_integer(unpack_data *obj, sexp_info *info) {
+SEXP unpack_read_vector_integer(unpack_data_t *obj, sexp_info_t *info) {
   info->length = buffer_read_length(obj->buffer);
   SEXP s = PROTECT(allocVector(info->type, info->length));
   switch (obj->buffer->format) {
@@ -153,7 +153,7 @@ SEXP unpack_read_vector_integer(unpack_data *obj, sexp_info *info) {
 }
 
 // InRealVec
-SEXP unpack_read_vector_real(unpack_data *obj, sexp_info *info) {
+SEXP unpack_read_vector_real(unpack_data_t *obj, sexp_info_t *info) {
   info->length = buffer_read_length(obj->buffer);
   SEXP s = PROTECT(allocVector(info->type, info->length));
   switch (obj->buffer->format) {
@@ -172,7 +172,7 @@ SEXP unpack_read_vector_real(unpack_data *obj, sexp_info *info) {
 }
 
 // InComplexVec
-SEXP unpack_read_vector_complex(unpack_data *obj, sexp_info *info) {
+SEXP unpack_read_vector_complex(unpack_data_t *obj, sexp_info_t *info) {
   info->length = buffer_read_length(obj->buffer);
   SEXP s = PROTECT(allocVector(info->type, info->length));
   switch (obj->buffer->format) {
@@ -191,7 +191,7 @@ SEXP unpack_read_vector_complex(unpack_data *obj, sexp_info *info) {
 }
 
 // ...no analog
-SEXP unpack_read_vector_raw(unpack_data *obj, sexp_info *info) {
+SEXP unpack_read_vector_raw(unpack_data_t *obj, sexp_info_t *info) {
   info->length = buffer_read_length(obj->buffer);
   SEXP s = PROTECT(allocVector(info->type, info->length));
   buffer_read_bytes(obj->buffer, (size_t)info->length, RAW(s));
@@ -201,7 +201,7 @@ SEXP unpack_read_vector_raw(unpack_data *obj, sexp_info *info) {
 }
 
 // ...no analog
-SEXP unpack_read_vector_character(unpack_data *obj, sexp_info *info) {
+SEXP unpack_read_vector_character(unpack_data_t *obj, sexp_info_t *info) {
   info->length = buffer_read_length(obj->buffer);
   SEXP s = PROTECT(allocVector(info->type, info->length));
   for (R_xlen_t i = 0; i < info->length; ++i) {
@@ -213,7 +213,7 @@ SEXP unpack_read_vector_character(unpack_data *obj, sexp_info *info) {
 }
 
 // ...no analog
-SEXP unpack_read_vector_generic(unpack_data *obj, sexp_info *info) {
+SEXP unpack_read_vector_generic(unpack_data_t *obj, sexp_info_t *info) {
   info->length = buffer_read_length(obj->buffer);
   SEXP s = PROTECT(allocVector(info->type, info->length));
   for (R_xlen_t i = 0; i < info->length; ++i) {
@@ -225,7 +225,7 @@ SEXP unpack_read_vector_generic(unpack_data *obj, sexp_info *info) {
 }
 
 // ...no analog
-SEXP unpack_read_pairlist(unpack_data *obj, sexp_info *info) {
+SEXP unpack_read_pairlist(unpack_data_t *obj, sexp_info_t *info) {
   // From serialize.c:
   /* This handling of dotted pair objects still uses recursion
      on the CDR and so will overflow the PROTECT stack for long
@@ -249,7 +249,7 @@ SEXP unpack_read_pairlist(unpack_data *obj, sexp_info *info) {
 }
 
 // ...no analog
-SEXP unpack_read_charsxp(unpack_data *obj, sexp_info *info) {
+SEXP unpack_read_charsxp(unpack_data_t *obj, sexp_info_t *info) {
   // NOTE: *not* read_length() because limited to 2^32 - 1
   info->length = buffer_read_integer(obj->buffer);
   SEXP s;
@@ -290,7 +290,7 @@ SEXP unpack_read_charsxp(unpack_data *obj, sexp_info *info) {
 }
 
 // ...no analog
-SEXP unpack_read_symbol(unpack_data *obj, sexp_info *info) {
+SEXP unpack_read_symbol(unpack_data_t *obj, sexp_info_t *info) {
   SEXP s = PROTECT(unpack_read_item(obj));
   // TODO: this _should_ be done with installTrChar which sets up the
   // translations.  However, we don't have access to that!  I don't
@@ -310,7 +310,7 @@ SEXP unpack_read_symbol(unpack_data *obj, sexp_info *info) {
 }
 
 // InRefIndex
-int unpack_read_ref_index(unpack_data *obj, sexp_info *info) {
+int unpack_read_ref_index(unpack_data_t *obj, sexp_info_t *info) {
   int i = UNPACK_REF_INDEX(info->flags);
   if (i == 0) {
     return buffer_read_integer(obj->buffer);
@@ -320,7 +320,7 @@ int unpack_read_ref_index(unpack_data *obj, sexp_info *info) {
 }
 
 // ...no analog
-SEXP unpack_read_ref(unpack_data *obj, sexp_info *info) {
+SEXP unpack_read_ref(unpack_data_t *obj, sexp_info_t *info) {
   // This one is much easier than insertion because we will just
   // arrange to be able to look the reference up.  Though if we do the
   // resolution recursively that won't happen (but I think that a plan
@@ -329,7 +329,7 @@ SEXP unpack_read_ref(unpack_data *obj, sexp_info *info) {
   return get_read_ref(obj, info, index);
 }
 
-SEXP unpack_read_package(unpack_data *obj, sexp_info *info) {
+SEXP unpack_read_package(unpack_data_t *obj, sexp_info_t *info) {
   SEXP s = PROTECT(unpack_read_persistent_string(obj, info));
   s = R_FindPackageEnv(s);
   UNPROTECT(1);
@@ -337,7 +337,7 @@ SEXP unpack_read_package(unpack_data *obj, sexp_info *info) {
   return s;
 }
 
-SEXP unpack_read_namespace(unpack_data *obj, sexp_info *info) {
+SEXP unpack_read_namespace(unpack_data_t *obj, sexp_info_t *info) {
   SEXP s = PROTECT(unpack_read_persistent_string(obj, info));
   s = R_FindNamespace1(s);
   UNPROTECT(1);
@@ -346,7 +346,7 @@ SEXP unpack_read_namespace(unpack_data *obj, sexp_info *info) {
 }
 
 // This seems unlikely to be API, though it does all compile
-SEXP unpack_read_environment(unpack_data *obj, sexp_info *info) {
+SEXP unpack_read_environment(unpack_data_t *obj, sexp_info_t *info) {
   int locked = buffer_read_integer(obj->buffer);
   SEXP s = PROTECT(allocSExp(ENVSXP));
   add_read_ref(obj, s, info);
@@ -375,7 +375,7 @@ SEXP unpack_read_environment(unpack_data *obj, sexp_info *info) {
   return s;
 }
 
-SEXP unpack_read_extptr(unpack_data *obj, sexp_info *info) {
+SEXP unpack_read_extptr(unpack_data_t *obj, sexp_info_t *info) {
   SEXP s = PROTECT(allocSExp(info->type));
   add_read_ref(obj, s, info);
   R_SetExternalPtrAddr(s, NULL);
@@ -386,7 +386,7 @@ SEXP unpack_read_extptr(unpack_data *obj, sexp_info *info) {
   return s;
 }
 
-SEXP unpack_read_weakref(unpack_data *obj, sexp_info *info) {
+SEXP unpack_read_weakref(unpack_data_t *obj, sexp_info_t *info) {
   SEXP s = PROTECT(R_MakeWeakRef(R_NilValue, R_NilValue, R_NilValue,
                                  FALSE));
   add_read_ref(obj, s, info);
@@ -397,7 +397,7 @@ SEXP unpack_read_weakref(unpack_data *obj, sexp_info *info) {
 
 // InStringVec - almost the same as the above, but with one extra
 // integer read and no attribute check, and type set explicitly
-SEXP unpack_read_persistent_string(unpack_data *obj, sexp_info *info) {
+SEXP unpack_read_persistent_string(unpack_data_t *obj, sexp_info_t *info) {
   if (buffer_read_integer(obj->buffer) != 0) {
     // This is an R limitation
     Rf_error("names in persistent strings are not supported yet");
@@ -411,7 +411,7 @@ SEXP unpack_read_persistent_string(unpack_data *obj, sexp_info *info) {
   return s;
 }
 
-SEXP unpack_read_persist(unpack_data *obj, sexp_info *info) {
+SEXP unpack_read_persist(unpack_data_t *obj, sexp_info_t *info) {
   // PERSISTSXP
   SEXP s = PROTECT(unpack_read_persistent_string(obj, info));
   Rf_error("unimplemented: unpack_read_persistent");
@@ -425,7 +425,7 @@ SEXP unpack_read_persist(unpack_data *obj, sexp_info *info) {
 }
 
 // There is close to zero chance that this is API
-SEXP unpack_read_builtin(unpack_data *obj, sexp_info *info) {
+SEXP unpack_read_builtin(unpack_data_t *obj, sexp_info_t *info) {
   /*
   info->length = buffer_read_integer(obj->buffer);
   char cbuf[info->length + 1];
@@ -445,7 +445,7 @@ SEXP unpack_read_builtin(unpack_data *obj, sexp_info *info) {
   return R_NilValue;
 }
 
-SEXP unpack_read_bcode(unpack_data *obj, sexp_info *info) {
+SEXP unpack_read_bcode(unpack_data_t *obj, sexp_info_t *info) {
   // This is another whole level of hell:
   /*
   info->length = buffer_read_integer(obj->buffer);
@@ -460,7 +460,7 @@ SEXP unpack_read_bcode(unpack_data *obj, sexp_info *info) {
 }
 
 // Used in the above
-void unpack_add_attributes(SEXP s, sexp_info *info, unpack_data *obj) {
+void unpack_add_attributes(SEXP s, sexp_info_t *info, unpack_data_t *obj) {
   if (info->type != CHARSXP) {
     SETLEVELS(s, info->levels);
   }
@@ -474,7 +474,7 @@ void unpack_add_attributes(SEXP s, sexp_info *info, unpack_data *obj) {
   }
 }
 
-void unpack_flags(int flags, sexp_info * info) {
+void unpack_flags(int flags, sexp_info_t *info) {
   info->flags = flags;
   info->type = DECODE_TYPE(flags);
   info->levels = DECODE_LEVELS(flags);
@@ -484,8 +484,8 @@ void unpack_flags(int flags, sexp_info * info) {
 }
 
 // Prep work
-unpack_data * unpack_data_create(SEXP r_x) {
-  unpack_data * obj = (unpack_data *)R_alloc(1, sizeof(unpack_data));
+unpack_data_t * unpack_data_create(SEXP r_x) {
+  unpack_data_t * obj = (unpack_data_t *)R_alloc(1, sizeof(unpack_data_t));
   unpack_prepare(r_x, obj);
   // These all start with safe values:
   obj->ref_objects = R_NilValue;
@@ -494,7 +494,7 @@ unpack_data * unpack_data_create(SEXP r_x) {
   return obj;
 }
 
-void unpack_prepare(SEXP r_x, unpack_data *obj) {
+void unpack_prepare(SEXP r_x, unpack_data_t *obj) {
   if (TYPEOF(r_x) != RAWSXP) {
     Rf_error("Expected a raw string");
   }
@@ -503,7 +503,7 @@ void unpack_prepare(SEXP r_x, unpack_data *obj) {
   unpack_check_version(obj);
 }
 
-void unpack_check_format(unpack_data *obj) {
+void unpack_check_format(unpack_data_t *obj) {
   char buf[2];
   buffer_read_bytes(obj->buffer, 2, buf);
   switch(buf[0]) {
@@ -525,7 +525,7 @@ void unpack_check_format(unpack_data *obj) {
   }
 }
 
-void unpack_check_version(unpack_data *obj) {
+void unpack_check_version(unpack_data_t *obj) {
   int version, writer_version, release_version;
   version = buffer_read_integer(obj->buffer);
   // Could just walk the reader along 2 * sizeof(int) bytes instead
@@ -557,7 +557,7 @@ SEXP init_read_ref(rds_index_t *index) {
 }
 
 // GetReadRef
-SEXP get_read_ref(unpack_data *obj, sexp_info *info, int index) {
+SEXP get_read_ref(unpack_data_t *obj, sexp_info_t *info, int index) {
   int i;
   SEXP data = CAR(obj->ref_objects);
   if (obj->index == NULL) {
@@ -581,7 +581,7 @@ SEXP get_read_ref(unpack_data *obj, sexp_info *info, int index) {
 }
 
 // AddReadRef
-void add_read_ref(unpack_data *obj, SEXP value, sexp_info *info) {
+void add_read_ref(unpack_data_t *obj, SEXP value, sexp_info_t *info) {
   // used by:
   // - [x] SYMSXP
   // - [ ] PERSISTSXP
@@ -643,7 +643,7 @@ static SEXP R_FindNamespace1(SEXP info)
 
 // This exists as a reverse to buffer_write_string (it may move file
 // again).
-size_t unpack_write_string(unpack_data *obj, const char *s, size_t s_len,
+size_t unpack_write_string(unpack_data_t *obj, const char *s, size_t s_len,
                            const char **value) {
   switch (obj->buffer->format) {
   case BINARY:
