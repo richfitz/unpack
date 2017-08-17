@@ -1,9 +1,11 @@
 #include "unpack.h"
+/*
 #include "index.h"
 #include "extract.h"
 #include "find.h"
 #include "search.h"
 #include "pick.h"
+*/
 
 #include <R_ext/Rdynload.h>
 #include <Rversion.h>
@@ -11,7 +13,7 @@
 static const R_CallMethodDef call_methods[] = {
   // wrapper
   {"Cunpack_all",                  (DL_FUNC) &r_unpack_all,                1},
-
+  /*
   // index
   {"Cunpack_index",                (DL_FUNC) &r_unpack_index,              2},
   {"Cunpack_index_as_matrix",      (DL_FUNC) &r_unpack_index_as_matrix,    1},
@@ -38,10 +40,11 @@ static const R_CallMethodDef call_methods[] = {
 
   // pick things
   {"Cunpack_pick_attributes",      (DL_FUNC) &r_unpack_pick_attributes,    4},
-
+  */
   // more
   {"Csexptypes",                   (DL_FUNC) &r_sexptypes,                 0},
   {"Cto_sexptype",                 (DL_FUNC) &r_to_sexptype,               1},
+
   {NULL,                           NULL,                                   0}
 };
 

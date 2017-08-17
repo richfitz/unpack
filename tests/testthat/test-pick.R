@@ -10,3 +10,6 @@ test_that("simple case", {
   expect_identical(unpack_pick_attributes(xb, idx_ptr),
                    as.pairlist(attributes(x)))
 })
+
+## next up - start with an object that combines x and idx so we can
+## make it immutable

@@ -22,10 +22,6 @@ to_sexptype <- function(x) {
   .Call(Cto_sexptype, x)
 }
 
-unpack_extract <- function(x, index, id, reuse_ref = FALSE) {
-  .Call(Cunpack_extract, x, index, id, reuse_ref)
-}
-
 unpack_index_refs <- function(index) {
   .Call(Cunpack_index_refs, index)
 }
@@ -53,6 +49,12 @@ index_find_id <- function(index, at, start_id = 0L) {
 }
 index_find_attributes <- function(index, id) {
   .Call(Cindex_find_attributes, index, id)
+}
+
+## Below here uses both the data and the index; so we'll treat them
+## differently.
+unpack_extract <- function(x, index, id, reuse_ref = FALSE) {
+  .Call(Cunpack_extract, x, index, id, reuse_ref)
 }
 
 ## Search

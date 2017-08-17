@@ -1,5 +1,7 @@
 #include "index.h"
 
+SEXP r_unpack_extract_container(SEXP r_x, SEXP r_index);
+
 SEXP r_unpack_extract_plan(SEXP r_index, SEXP r_id);
 SEXP r_unpack_extract(SEXP r_x, SEXP r_index, SEXP r_id, SEXP r_reuse_ref);
 

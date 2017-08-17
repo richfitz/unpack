@@ -38,6 +38,7 @@ check_all:
 
 clean:
 	rm -f src/*.o src/*.so src/*.dll
+	rm -rf src/unpack.so.dSYM
 
 README.md: README.Rmd
 	Rscript -e "options(warnPartialMatchArgs=FALSE); knitr::knit('$<')"

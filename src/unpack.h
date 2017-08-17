@@ -47,6 +47,14 @@ typedef struct stream {
   int depth;
 } stream_t;
 
+// TODO: this needs splitting into two things; an index *builder* and
+// an *index*.  The latter is simply the sexp_info* and the length
+//
+// The former is all the other crap
+
+
+
+
 typedef struct {
   // NOTE: Not using long things here because it complicates export.
   // This needs changing in index_return and index_grow but perhaps

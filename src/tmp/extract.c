@@ -2,6 +2,40 @@
 #include "unpack.h"
 #include "util.h"
 
+static void r_unpack_data_finalize(SEXP r_ptr);
+
+SEXP r_unpack_data_create(SEXP r_x, SEXP r_index) {
+  // TODO: this will include a checksum of the data that we'll include
+  // in the index.
+  //
+  // TODO: we'll need to be more generous about what x can be
+  r_x = PROTECT(duplicate(r_x));
+  unpack_data * obj = (unpack_data *)Calloc(1, unpack_data);
+  obj->index = get_index(r_index, true);
+  unpack_prepare(r_x, obj);
+  obj->count = 0;
+  SEXP ref_objects = PROTECT(init_read_ref(obj->index));
+  obj->ref_objects = ref_objects;
+
+  SEXP ret = PROTECT(R_MakeExternalPtr(obj, r_x, ref_objects));
+  R_RegisterCFinalizer(ret, r_unpack_data_finalize);
+
+  UNPROTECT(3);
+  return ret;
+}
+
+static void r_unpack_data_finalize(SEXP r_ptr) {
+  /*
+  unpack_data * obj = get_unpack_data(r_ptr, false);
+  if (obj == NULL) {
+    Free(obj->ref_table);
+    Free(obj->obj);
+    Free(obj);
+    R_ClearExternalPtr(r_ptr);
+  }
+  */
+}
+
 SEXP r_unpack_extract_plan(SEXP r_index, SEXP r_id) {
   rds_index *index = get_index(r_index, true);
   size_t id = scalar_size(r_id, "id");
