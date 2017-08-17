@@ -1,4 +1,5 @@
 #include "rdsi.h"
+#include "index.h"
 
 static void r_rdsi_finalize(SEXP r_ptr);
 
@@ -10,13 +11,17 @@ static void r_rdsi_finalize(SEXP r_ptr);
 // For use with thor we might want to do something with r_data that
 // requires that it be checked each time.  Using an
 // automatically-invalidating pointer would work.
+//
+// One option would probably be a weak reference, so that we don't
+// prevent gc of the object.
 SEXP rdsi_create(const data_t * data, const rds_index_t * index,
                  SEXP r_data) {
   rdsi_t * rdsi = (rdsi_t*)Calloc(1, rdsi_t);
   rdsi->data = data;
   rdsi->index = index;
   rdsi->ref_objects = R_NilValue;
-  SEXP ret = PROTECT(R_MakeExternalPtr(rdsi, R_NilValue, r_data));
+  SEXP prot = PROTECT(CONS(r_data, R_NilValue));
+  SEXP ret = PROTECT(R_MakeExternalPtr(rdsi, R_NilValue, prot));
   R_RegisterCFinalizer(ret, r_rdsi_finalize);
   return ret;
 }
@@ -50,7 +55,20 @@ SEXP rdsi_get_data(SEXP r_ptr) {
 }
 
 SEXP rdsi_get_index_as_matrix(SEXP r_ptr) {
-  // rdsi_t *rdsi = get_rdsi(r_ptr, true);
-  // return r_unpack_index_as_matrix(SEXP r_ptr);
+  rdsi_t *rdsi = get_rdsi(r_ptr, true);
+  return index_as_matrix(rdsi->index);
+}
+
+SEXP rdsi_get_refs(SEXP r_ptr) {
+  get_rdsi(r_ptr, true); // for side effects
+  SEXP refs = CDR(R_ExternalPtrProtected(r_ptr));
+  return refs == R_NilValue ? R_NilValue : CAR(refs);
+}
+
+SEXP r_unpack_index_refs_clear(SEXP r_ptr) {
+  get_index(r_ptr, true); // for side effects
+  SEXP prot = R_ExternalPtrProtected(r_ptr);
+  SETCDR(prot, R_NilValue);
+  R_SetExternalPtrProtected(r_ptr, prot);
   return R_NilValue;
 }

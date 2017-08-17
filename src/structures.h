@@ -57,7 +57,7 @@ typedef struct {
   // A vector of useful indices
   sexp_info *objects;
   // The length of 'objects'
-  size_t len;
+  R_xlen_t len;
   // The number of references (this can be computed from objects/len
   // fairly cheaply, but we might as well store it)
   size_t n_refs;
@@ -74,22 +74,6 @@ typedef struct {
   SEXP ref_objects;
 } rdsi_t;
 
-
-// this one needs serious work
-typedef struct {
-  // NOTE: Not using long things here because it complicates export.
-  // This needs changing in index_return and index_grow but perhaps
-  // nowhere else...
-  sexp_info * index;
-  size_t id; // id of the *next* object
-  size_t len; // capacity
-  // This is basically all reference table stuff, and will not be
-  // present on index *use*, except for ref_table_count
-  size_t ref_table_count;
-  size_t ref_table_len;
-  size_t *ref_table;
-} rds_index;
-
 typedef struct unpack_data {
   // The actual data to read
   buffer_t * buffer;
@@ -100,7 +84,8 @@ typedef struct unpack_data {
   // so that we can safely add objects into the data and resize as needed.
   SEXP ref_objects;
   // An index, if we are using one
-  rds_index *index;
+  rds_index_t *index;
+
   // The object position in the stream.  This is used to assign the
   // next object id into a sexp_info (which is then used to organise
   // the reference table) and used when reading so that we can skip

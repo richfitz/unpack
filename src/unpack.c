@@ -25,7 +25,7 @@ SEXP unpack_read_item(unpack_data *obj) {
     // here in the index directly I think.  They're used in a couple
     // of places anyway.  But for now, this is OK and no worse than
     // what happens if we go all the way through the usual resolution.
-    sexp_info *info_prev = obj->index->index + id;
+    sexp_info *info_prev = obj->index->objects + id;
     size_t refid = info_prev->refid;
     if (refid > 0 && info_prev->type != REFSXP) {
       if (INTEGER(CDR(obj->ref_objects))[refid - 1]) {
@@ -538,10 +538,10 @@ void unpack_check_version(unpack_data *obj) {
 
 // References
 // MakeReadRefTable
-SEXP init_read_ref(rds_index *index) {
+SEXP init_read_ref(rds_index_t *index) {
   SEXP ret;
   size_t initial_size =
-    index == NULL ? INITIAL_REFREAD_TABLE_SIZE : index->ref_table_count;
+    index == NULL ? INITIAL_REFREAD_TABLE_SIZE : index->n_refs;
   SEXP data = PROTECT(allocVector(VECSXP, initial_size));
   if (index == NULL) {
     SET_TRUELENGTH(data, 0);
@@ -566,8 +566,8 @@ SEXP get_read_ref(unpack_data *obj, sexp_info *info, int index) {
       Rf_error("reference index out of range");
     }
   } else {
-    size_t true_id = obj->index->index[info->id].refid;
-    size_t index = obj->index->index[true_id].refid;
+    size_t true_id = obj->index->objects[info->id].refid;
+    size_t index = obj->index->objects[true_id].refid;
     Rprintf("object %d is reqesting %d resolved as %d\n",
             info->id, index, true_id);
     i = index - 1;
@@ -618,7 +618,7 @@ void add_read_ref(unpack_data *obj, SEXP value, sexp_info *info) {
     }
     SET_TRUELENGTH(data, count);
   } else {
-    count = obj->index->index[info->id].refid;
+    count = obj->index->objects[info->id].refid;
     INTEGER(CDR(obj->ref_objects))[count - 1] = 1;
   }
   Rprintf("Inserting reference %d to %d\n", count - 1, info->id);
