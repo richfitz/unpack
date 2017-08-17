@@ -65,7 +65,6 @@ typedef struct {
   size_t *ref_table;
 } rds_index;
 
-
 typedef struct unpack_data {
   // The actual data to read
   buffer_t * buffer;
@@ -77,7 +76,10 @@ typedef struct unpack_data {
   SEXP ref_objects;
   // An index, if we are using one
   rds_index *index;
-  // The object position in the stream
+  // The object position in the stream.  This is used to assign the
+  // next object id into a sexp_info (which is then used to organise
+  // the reference table) and used when reading so that we can skip
+  // ahead over bits that we have already read.
   R_xlen_t count;
 } unpack_data;
 

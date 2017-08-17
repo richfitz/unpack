@@ -83,3 +83,26 @@ void buffer_read_string(buffer_t *buffer, size_t len, char *dest) {
     Rf_error("not implemented (read_string)");
   }
 }
+
+// ReadLENGTH
+R_xlen_t buffer_read_length(buffer_t *buffer) {
+  int len = buffer_read_integer(buffer);
+#ifdef LONG_VECTOR_SUPPORT
+  if (len < -1)
+    Rf_error("negative serialized length for vector");
+  if (len == -1) {
+    unsigned int len1, len2;
+    len1 = buffer_read_integer(buffer); /* upper part */
+    len2 = buffer_read_integer(buffer); /* lower part */
+    R_xlen_t xlen = len1;
+    /* sanity check for now */
+    if (len1 > 65536)
+      Rf_error("invalid upper part of serialized vector length");
+    return (xlen << 32) + len2;
+  } else return len;
+#else
+  if (len < 0)
+    Rf_error("negative serialized vector length:\nperhaps long vector from 64-bit version of R?");
+  return len;
+#endif
+}

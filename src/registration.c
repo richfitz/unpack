@@ -1,4 +1,5 @@
 #include "unpack.h"
+#include "helpers.h"
 /*
 #include "index.h"
 #include "extract.h"
