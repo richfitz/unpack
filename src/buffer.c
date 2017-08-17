@@ -1,6 +1,6 @@
 #include "buffer.h"
 
-buffer_t * buffer_create(unsigned char *data, R_xlen_t len) {
+buffer_t * buffer_create(const data_t *data, R_xlen_t len) {
   buffer_t *buffer = (buffer_t *)R_alloc(1, sizeof(buffer_t));
   buffer->pos = 0;
   buffer->len = len;
@@ -22,7 +22,7 @@ void buffer_move_to(buffer_t *buffer, R_xlen_t pos) {
   buffer->pos = pos;
 }
 
-void * buffer_at(buffer_t *buffer, R_xlen_t pos) {
+const data_t * buffer_at(buffer_t *buffer, R_xlen_t pos) {
   if (pos > buffer->len) {
     Rf_error("buffer overflow");
   }

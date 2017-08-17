@@ -10,7 +10,7 @@ static void r_rdsi_finalize(SEXP r_ptr);
 // For use with thor we might want to do something with r_data that
 // requires that it be checked each time.  Using an
 // automatically-invalidating pointer would work.
-SEXP rdsi_create(const unsigned char * data, const rds_index_t * index,
+SEXP rdsi_create(const data_t * data, const rds_index_t * index,
                  SEXP r_data) {
   rdsi_t * rdsi = (rdsi_t*)Calloc(1, rdsi_t);
   rdsi->data = data;

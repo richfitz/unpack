@@ -5,6 +5,8 @@
 #include <Rinternals.h>
 #include <stdbool.h>
 
+typedef unsigned char data_t;
+
 // The buffer
 typedef enum {
   ASCII,
@@ -19,7 +21,7 @@ typedef enum {
 typedef struct {
   R_xlen_t len; // total capacity
   R_xlen_t pos; // current position
-  unsigned char *data;
+  const data_t *data;
   serialisation_format format;
 } buffer_t;
 
@@ -66,7 +68,7 @@ typedef struct {
 // into place into the unpack_data object as needed.  The ref_objects
 // one might move out of here.
 typedef struct {
-  const unsigned char * data;
+  const data_t * data;
   R_xlen_t data_len;
   const rds_index_t * index;
   SEXP ref_objects;
