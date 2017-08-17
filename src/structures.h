@@ -50,6 +50,29 @@ typedef struct sexp_info {
   bool has_tag;
 } sexp_info;
 
+// This is our index; it is not a big object.
+typedef struct {
+  // A vector of useful indices
+  sexp_info *objects;
+  // The length of 'objects'
+  size_t len;
+  // The number of references (this can be computed from objects/len
+  // fairly cheaply, but we might as well store it)
+  size_t n_refs;
+} rds_index_t;
+
+// This will be the object that we pass back to R; it contains the
+// data, index and a set of reference objects.  These will be moved
+// into place into the unpack_data object as needed.  The ref_objects
+// one might move out of here.
+typedef struct {
+  const unsigned char * data;
+  R_xlen_t data_len;
+  const rds_index_t * index;
+  SEXP ref_objects;
+} rdsi_t;
+
+
 // this one needs serious work
 typedef struct {
   // NOTE: Not using long things here because it complicates export.
