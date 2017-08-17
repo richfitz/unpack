@@ -5,7 +5,6 @@ buffer_t * buffer_create(unsigned char *data, R_xlen_t len) {
   buffer->pos = 0;
   buffer->len = len;
   buffer->data = data;
-  buffer->depth = 0;
   return buffer;
 }
 

@@ -21,7 +21,6 @@ typedef struct {
   R_xlen_t pos; // current position
   unsigned char *data;
   serialisation_format format;
-  int depth;
 } buffer_t;
 
 typedef struct sexp_info {

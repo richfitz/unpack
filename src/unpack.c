@@ -37,12 +37,10 @@ SEXP unpack_read_environment(unpack_data *obj, sexp_info *info) {
   SEXP s = PROTECT(allocSExp(ENVSXP));
   add_read_ref(obj, s, info);
 
-  obj->buffer->depth++;
   SET_ENCLOS(s, unpack_read_item(obj));
   SET_FRAME(s, unpack_read_item(obj));
   SET_HASHTAB(s, unpack_read_item(obj));
   SET_ATTRIB(s, unpack_read_item(obj));
-  obj->buffer->depth--;
 
   if (ATTRIB(s) != R_NilValue &&
       getAttrib(s, R_ClassSymbol) != R_NilValue) {
@@ -67,10 +65,8 @@ SEXP unpack_read_extptr(unpack_data *obj, sexp_info *info) {
   SEXP s = PROTECT(allocSExp(info->type));
   add_read_ref(obj, s, info);
   R_SetExternalPtrAddr(s, NULL);
-  obj->buffer->depth++;
   R_SetExternalPtrProtected(s, unpack_read_item(obj));
   R_SetExternalPtrTag(s, unpack_read_item(obj));
-  obj->buffer->depth--;
   unpack_add_attributes(s, info, obj);
   UNPROTECT(1);
   return s;
@@ -214,11 +210,9 @@ SEXP unpack_read_vector_raw(unpack_data *obj, sexp_info *info) {
 SEXP unpack_read_vector_character(unpack_data *obj, sexp_info *info) {
   info->length = unpack_read_length(obj);
   SEXP s = PROTECT(allocVector(info->type, info->length));
-  obj->buffer->depth++;
   for (R_xlen_t i = 0; i < info->length; ++i) {
     SET_STRING_ELT(s, i, unpack_read_item(obj));
   }
-  obj->buffer->depth--;
   unpack_add_attributes(s, info, obj);
   UNPROTECT(1);
   return s;
@@ -233,11 +227,9 @@ SEXP unpack_read_persistent_string(unpack_data *obj, sexp_info *info) {
   }
   info->length = unpack_read_length(obj);
   SEXP s = PROTECT(allocVector(STRSXP, info->length));
-  obj->buffer->depth++;
   for (R_xlen_t i = 0; i < info->length; ++i) {
     SET_STRING_ELT(s, i, unpack_read_item(obj));
   }
-  obj->buffer->depth--;
   UNPROTECT(1);
   return s;
 }
@@ -246,11 +238,9 @@ SEXP unpack_read_persistent_string(unpack_data *obj, sexp_info *info) {
 SEXP unpack_read_vector_generic(unpack_data *obj, sexp_info *info) {
   info->length = unpack_read_length(obj);
   SEXP s = PROTECT(allocVector(info->type, info->length));
-  obj->buffer->depth++;
   for (R_xlen_t i = 0; i < info->length; ++i) {
     SET_VECTOR_ELT(s, i, unpack_read_item(obj));
   }
-  obj->buffer->depth--;
   unpack_add_attributes(s, info, obj);
   UNPROTECT(1);
   return s;
@@ -258,9 +248,7 @@ SEXP unpack_read_vector_generic(unpack_data *obj, sexp_info *info) {
 
 // ...no analog
 SEXP unpack_read_symbol(unpack_data *obj, sexp_info *info) {
-  obj->buffer->depth++;
   SEXP s = PROTECT(unpack_read_item(obj));
-  obj->buffer->depth--;
   // TODO: this _should_ be done with installTrChar which sets up the
   // translations.  However, we don't have access to that!  I don't
   // know if that will really hurt us if we don't have access to
@@ -294,11 +282,9 @@ SEXP unpack_read_pairlist(unpack_data *obj, sexp_info *info) {
   SEXP s = PROTECT(allocSExp(info->type));
   SETLEVELS(s, info->levels);
   SET_OBJECT(s, info->is_object);
-  obj->buffer->depth++;
   SET_ATTRIB(s, info->has_attr ? unpack_read_item(obj) : R_NilValue);
   SET_TAG(s, info->has_tag ? unpack_read_item(obj) : R_NilValue);
   SETCAR(s, unpack_read_item(obj));
-  obj->buffer->depth--;
   SETCDR(s, unpack_read_item(obj));
   UNPROTECT(1);
   return s;
@@ -692,14 +678,10 @@ void unpack_add_attributes(SEXP s, sexp_info *info, unpack_data *obj) {
   SET_OBJECT(s, info->is_object);
   if (TYPEOF(s) == CHARSXP) {
     if (info->has_attr) {
-      obj->buffer->depth++;
       unpack_read_item(obj);
-      obj->buffer->depth--;
     }
   } else {
-    obj->buffer->depth++;
     SET_ATTRIB(s, info->has_attr ? unpack_read_item(obj) : R_NilValue);
-    obj->buffer->depth--;
   }
 }
 
