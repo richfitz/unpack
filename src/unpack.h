@@ -5,12 +5,8 @@
 #include <Rinternals.h>
 #include <stdbool.h>
 
-// The stream
-typedef enum {
-  ASCII,
-  BINARY,
-  XDR
-} serialisation_format;
+#include "structures.h"
+#include "buffer.h"
 
 typedef struct sexp_info {
   int flags;
@@ -35,18 +31,6 @@ typedef struct sexp_info {
   bool has_tag;
 } sexp_info;
 
-// NOTE: Using R's long size types here in order to support
-// unserializing large objects.  We don't support resizing the buffer
-// because we're just going to try and read from this rather than
-// allocate it.  See R-ints for what the right thing to do here is.
-typedef struct stream {
-  R_xlen_t size;
-  R_xlen_t count;
-  unsigned char *buf;
-  serialisation_format format;
-  int depth;
-} stream_t;
-
 // TODO: this needs splitting into two things; an index *builder* and
 // an *index*.  The latter is simply the sexp_info* and the length
 //
@@ -70,20 +54,15 @@ typedef struct {
 } rds_index;
 
 typedef struct unpack_data {
-  stream_t * stream;
+  buffer_t * buffer;
   SEXP ref_objects;
   rds_index *index;
   R_xlen_t count;
 } unpack_data;
 
-int unpack_read_char(unpack_data *obj);
-int unpack_read_integer(unpack_data *obj);
 int unpack_read_ref_index(unpack_data *obj, sexp_info *info);
-void unpack_read_string(unpack_data *obj, char *buf, int length);
 
 R_xlen_t unpack_read_length(unpack_data *obj);
-
-void unpack_read_bytes(unpack_data *obj, void *buf, R_xlen_t len);
 
 SEXP unpack_read_vector_integer(unpack_data *obj, sexp_info *info);
 SEXP unpack_read_vector_real(unpack_data *obj, sexp_info *info);
@@ -105,12 +84,6 @@ SEXP unpack_read_bcode(unpack_data *obj, sexp_info *info);
 SEXP unpack_read_persistent_string(unpack_data *obj, sexp_info *info);
 
 SEXP unpack_read_item(unpack_data *obj);
-
-// Stream bits:
-void stream_advance(stream_t *stream, R_xlen_t len);
-void stream_move_to(stream_t *stream, R_xlen_t len);
-void * stream_at(stream_t *stream, R_xlen_t len);
-void stream_check_empty(stream_t *stream);
 
 // The interface:
 SEXP r_unpack_all(SEXP r_x);
