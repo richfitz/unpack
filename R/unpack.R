@@ -22,6 +22,7 @@ rdsi_get_refs <- function(rdsi) {
 
 rdsi_del_refs <- function(rdsi) {
   .Call(Crdsi_del_refs, rdsi)
+  invisible()
 }
 
 ## extract
@@ -33,6 +34,26 @@ unpack_extract <- function(rdsi, id, reuse_ref = FALSE) {
   .Call(Cunpack_extract, rdsi, id, reuse_ref)
 }
 
+## find
+index_find_element <- function(rdsi, id, i) {
+  .Call(Cindex_find_element, rdsi, id, i)
+}
+index_find_nth_child <- function(rdsi, id, n) {
+  .Call(Cindex_find_nth_child, rdsi, id, n)
+}
+index_find_car <- function(rdsi, id) {
+  .Call(Cindex_find_car, rdsi, id)
+}
+index_find_cdr <- function(rdsi, id) {
+  .Call(Cindex_find_cdr, rdsi, id)
+}
+index_find_id <- function(rdsi, at, start_id = 0L) {
+  .Call(Cindex_find_id, rdsi, at, start_id)
+}
+index_find_attributes <- function(rdsi, id) {
+  .Call(Cindex_find_attributes, rdsi, id)
+}
+
 
 ## helpers
 to_sexptype <- function(x) {
@@ -40,38 +61,6 @@ to_sexptype <- function(x) {
 }
 
 ## OLD:
-
-## extract plan
-
-
-unpack_index_refs <- function(index) {
-  .Call(Cunpack_index_refs, index)
-}
-
-unpack_index_refs_clear <- function(index) {
-  .Call(Cunpack_index_refs_clear, index)
-  invisible()
-}
-
-## Find
-index_find_element <- function(index, id, i) {
-  .Call(Cindex_find_element, index, id, i)
-}
-index_find_nth_child <- function(index, id, n) {
-  .Call(Cindex_find_nth_child, index, id, n)
-}
-index_find_car <- function(index, id) {
-  .Call(Cindex_find_car, index, id)
-}
-index_find_cdr <- function(index, id) {
-  .Call(Cindex_find_cdr, index, id)
-}
-index_find_id <- function(index, at, start_id = 0L) {
-  .Call(Cindex_find_id, index, at, start_id)
-}
-index_find_attributes <- function(index, id) {
-  .Call(Cindex_find_attributes, index, id)
-}
 
 ## Below here uses both the data and the index; so we'll treat them
 ## differently.
