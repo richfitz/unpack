@@ -1,7 +1,6 @@
 #include "index.h"
 #include "util.h"
 #include "unpack.h"
-#include "rdsi.h"
 
 // TODO: start_data is set in two different places here - for
 // everything in index_build() just after setting refid, but also
@@ -15,13 +14,14 @@
 
 static void r_index_finalize(SEXP r_ptr);
 
-// this probably mixes up two, or three, functions
+// this probably mixes up two functions
 SEXP r_index_build(SEXP r_x) {
+  // Do this first, because that's where the argument validation is
   unpack_data_t *obj = unpack_data_create(r_x);
 
   rds_index_t *index = (rds_index_t*) Calloc(1, rds_index_t);
-  SEXP prot = PROTECT(R_MakeExternalPtr(index, R_NilValue, R_NilValue));
-  R_RegisterCFinalizer(prot, r_index_finalize);
+  SEXP ret = PROTECT(R_MakeExternalPtr(index, R_NilValue, R_NilValue));
+  R_RegisterCFinalizer(ret, r_index_finalize);
 
   // Initialise things
   index->objects = NULL;
@@ -37,9 +37,7 @@ SEXP r_index_build(SEXP r_x) {
 
   obj->ref_objects = R_NilValue;
 
-  // Then push that into an rdsi
-  SEXP ret = PROTECT(rdsi_create(obj->buffer->data, index, r_x));
-  UNPROTECT(3);
+  UNPROTECT(2);
   return ret;
 }
 

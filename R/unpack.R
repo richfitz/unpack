@@ -1,26 +1,41 @@
+## wrapper
 unpack_all <- function(x) {
   .Call(Cunpack_all, x)
 }
 
-unpack_inspect <- function(x) {
-  .Call(Cunpack_inspect, x)
+## rdsi
+rdsi_build <- function(obj) {
+  .Call(Crdsi_build, obj)
 }
 
-unpack_index <- function(x, as_ptr = FALSE) {
-  .Call(Cunpack_index, x, as_ptr)
+rdsi_get_index_matrix <- function(obj) {
+  .Call(Crdsi_get_index_matrix, obj)
 }
 
-unpack_index_as_matrix <- function(x) {
-  .Call(Cunpack_index_as_matrix, x)
+rdsi_get_data <- function(obj) {
+  .Call(Crdsi_get_data, obj)
 }
 
+rdsi_get_refs <- function(obj) {
+  .Call(Crdsi_get_refs, obj)
+}
+
+rdsi_del_refs <- function(obj) {
+  .Call(Crdsi_del_refs, obj)
+}
+
+## helpers
+to_sexptype <- function(x) {
+  .Call(Cto_sexptype, x)
+}
+
+## OLD:
+
+## extract plan
 unpack_extract_plan <- function(index, id) {
   .Call(Cunpack_extract_plan, index, id)
 }
 
-to_sexptype <- function(x) {
-  .Call(Cto_sexptype, x)
-}
 
 unpack_index_refs <- function(index) {
   .Call(Cunpack_index_refs, index)

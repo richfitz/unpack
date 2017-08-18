@@ -486,7 +486,12 @@ void unpack_flags(int flags, sexp_info_t *info) {
 // Prep work
 unpack_data_t * unpack_data_create(SEXP r_x) {
   unpack_data_t * obj = (unpack_data_t *)R_alloc(1, sizeof(unpack_data_t));
-  unpack_prepare(r_x, obj);
+  if (TYPEOF(r_x) != RAWSXP) {
+    Rf_error("Expected a raw string");
+  }
+
+  unpack_prepare(unpack_target_data(r_x), XLENGTH(r_x), obj);
+
   // These all start with safe values:
   obj->ref_objects = R_NilValue;
   obj->index = NULL;
@@ -494,11 +499,17 @@ unpack_data_t * unpack_data_create(SEXP r_x) {
   return obj;
 }
 
-void unpack_prepare(SEXP r_x, unpack_data_t *obj) {
-  if (TYPEOF(r_x) != RAWSXP) {
-    Rf_error("Expected a raw string");
-  }
-  obj->buffer = buffer_create(RAW(r_x), XLENGTH(r_x));
+const data_t * unpack_target_data(SEXP r_x) {
+  // eventually support EXTPTR too.  That will probably require a
+  // little more work because we often have structures that are
+  // slightly more complex than that.  thor is the use case here, but
+  // redux could do similar things; they all return bespoke structures
+  // that include data and length.
+  return RAW(r_x);
+}
+
+void unpack_prepare(const data_t *data, R_xlen_t len, unpack_data_t *obj) {
+  obj->buffer = buffer_create(data, len);
   unpack_check_format(obj);
   unpack_check_version(obj);
 }
