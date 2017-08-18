@@ -2,9 +2,9 @@
 #include "index.h"
 #include "rdsi.h"
 #include "helpers.h"
+#include "extract.h"
 
 /*
-#include "extract.h"
 #include "find.h"
 #include "search.h"
 #include "pick.h"
@@ -24,15 +24,11 @@ static const R_CallMethodDef call_methods[] = {
   {"Crdsi_get_refs",               (DL_FUNC) &r_rdsi_get_refs,             1},
   {"Crdsi_del_refs",               (DL_FUNC) &r_rdsi_del_refs,             1},
 
-  /*
-  // extract plan
-  {"Cunpack_extract_plan",         (DL_FUNC) &r_unpack_extract_plan,       2},
-
   // extract
-  {"Cunpack_extract",              (DL_FUNC) &r_unpack_extract,            4},
-  {"Cunpack_index_refs",           (DL_FUNC) &r_unpack_index_refs,         1},
-  {"Cunpack_index_refs_clear",     (DL_FUNC) &r_unpack_index_refs_clear,   1},
+  {"Cunpack_extract_plan",         (DL_FUNC) &r_unpack_extract_plan,       2},
+  {"Cunpack_extract",              (DL_FUNC) &r_unpack_extract,            3},
 
+  /*
   // find things
   {"Cindex_find_element",          (DL_FUNC) &r_index_find_element,        3},
   {"Cindex_find_nth_child",        (DL_FUNC) &r_index_find_nth_child,      3},

@@ -61,6 +61,8 @@ typedef struct {
   // The number of references (this can be computed from objects/len
   // fairly cheaply, but we might as well store it)
   size_t n_refs;
+  // The total length of the data
+  R_xlen_t len_data;
 } rds_index_t;
 
 // This will be the object that we pass back to R; it contains the

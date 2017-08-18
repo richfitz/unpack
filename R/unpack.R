@@ -4,25 +4,35 @@ unpack_all <- function(x) {
 }
 
 ## rdsi
-rdsi_build <- function(obj) {
-  .Call(Crdsi_build, obj)
+rdsi_build <- function(x) {
+  .Call(Crdsi_build, x)
 }
 
-rdsi_get_index_matrix <- function(obj) {
-  .Call(Crdsi_get_index_matrix, obj)
+rdsi_get_index_matrix <- function(rdsi) {
+  .Call(Crdsi_get_index_matrix, rdsi)
 }
 
-rdsi_get_data <- function(obj) {
-  .Call(Crdsi_get_data, obj)
+rdsi_get_data <- function(rdsi) {
+  .Call(Crdsi_get_data, rdsi)
 }
 
-rdsi_get_refs <- function(obj) {
-  .Call(Crdsi_get_refs, obj)
+rdsi_get_refs <- function(rdsi) {
+  .Call(Crdsi_get_refs, rdsi)
 }
 
-rdsi_del_refs <- function(obj) {
-  .Call(Crdsi_del_refs, obj)
+rdsi_del_refs <- function(rdsi) {
+  .Call(Crdsi_del_refs, rdsi)
 }
+
+## extract
+unpack_extract_plan <- function(rdsi, id) {
+  .Call(Cunpack_extract_plan, rdsi, id)
+}
+
+unpack_extract <- function(rdsi, id, reuse_ref = FALSE) {
+  .Call(Cunpack_extract, rdsi, id, reuse_ref)
+}
+
 
 ## helpers
 to_sexptype <- function(x) {
@@ -32,9 +42,6 @@ to_sexptype <- function(x) {
 ## OLD:
 
 ## extract plan
-unpack_extract_plan <- function(index, id) {
-  .Call(Cunpack_extract_plan, index, id)
-}
 
 
 unpack_index_refs <- function(index) {
@@ -68,9 +75,6 @@ index_find_attributes <- function(index, id) {
 
 ## Below here uses both the data and the index; so we'll treat them
 ## differently.
-unpack_extract <- function(x, index, id, reuse_ref = FALSE) {
-  .Call(Cunpack_extract, x, index, id, reuse_ref)
-}
 
 ## Search
 index_search_attribute <- function(x, index, id, name) {

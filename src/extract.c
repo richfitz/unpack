@@ -1,47 +1,15 @@
 #include "extract.h"
 #include "unpack.h"
+#include "rdsi.h"
 #include "util.h"
 
-static void r_unpack_data_finalize(SEXP r_ptr);
+SEXP r_unpack_extract_plan(SEXP r_rdsi, SEXP r_id) {
+  const rds_index_t *index = get_rdsi_index(r_rdsi);
 
-SEXP r_unpack_data_create(SEXP r_x, SEXP r_index) {
-  // TODO: this will include a checksum of the data that we'll include
-  // in the index.
-  //
-  // TODO: we'll need to be more generous about what x can be
-  r_x = PROTECT(duplicate(r_x));
-  unpack_data * obj = (unpack_data *)Calloc(1, unpack_data);
-  obj->index = get_index(r_index, true);
-  unpack_prepare(r_x, obj);
-  obj->count = 0;
-  SEXP ref_objects = PROTECT(init_read_ref(obj->index));
-  obj->ref_objects = ref_objects;
-
-  SEXP ret = PROTECT(R_MakeExternalPtr(obj, r_x, ref_objects));
-  R_RegisterCFinalizer(ret, r_unpack_data_finalize);
-
-  UNPROTECT(3);
-  return ret;
-}
-
-static void r_unpack_data_finalize(SEXP r_ptr) {
-  /*
-  unpack_data * obj = get_unpack_data(r_ptr, false);
-  if (obj == NULL) {
-    Free(obj->ref_table);
-    Free(obj->obj);
-    Free(obj);
-    R_ClearExternalPtr(r_ptr);
-  }
-  */
-}
-
-SEXP r_unpack_extract_plan(SEXP r_index, SEXP r_id) {
-  rds_index *index = get_index(r_index, true);
   size_t id = scalar_size(r_id, "id");
-  size_t len = index->id;
+  size_t len = index->len;
   if (id > len - 1)  {
-    Rf_error("id is out of bounds (%d / %d)", id, index->id - 1);
+    Rf_error("id is out of bounds (%d / %d)", id, index->len - 1);
   }
 
   bool *seen = (bool*) R_alloc(len, sizeof(bool));
@@ -49,7 +17,7 @@ SEXP r_unpack_extract_plan(SEXP r_index, SEXP r_id) {
   memset(seen, 0, len * sizeof(bool));
   memset(need, 0, len * sizeof(bool));
 
-  sexp_info * info = index->index + id;
+  sexp_info_t * info = index->objects + id;
   unpack_extract_plan(index, id, info, seen, need);
 
   SEXP r_seen = PROTECT(allocVector(LGLSXP, len));
@@ -64,13 +32,14 @@ SEXP r_unpack_extract_plan(SEXP r_index, SEXP r_id) {
   return r_need;
 }
 
-void unpack_extract_plan(rds_index *index, size_t id, const sexp_info *focal,
+void unpack_extract_plan(const rds_index_t *index, size_t id,
+                         const sexp_info_t *focal,
                          bool *seen, bool *need) {
-  sexp_info *info = index->index + id;
+  sexp_info_t *info = index->objects + id;
   R_xlen_t end = info->end;
-  for (size_t i = id; i < index->id - 1; ++i) {
+  for (size_t i = id; i < (size_t)index->len - 1; ++i) {
     if (!seen[i]) {
-      sexp_info *child = index->index + i;
+      sexp_info_t *child = index->objects + i;
       if (child->start_data > end) {
         // only search as far as the end of the focal sexp:
         break;
@@ -78,7 +47,7 @@ void unpack_extract_plan(rds_index *index, size_t id, const sexp_info *focal,
       seen[i] = true;
       if (child->type == REFSXP) {
         size_t i_ref = child->refid;
-        R_xlen_t pos = index->index[i_ref].start_object;
+        R_xlen_t pos = index->objects[i_ref].start_object;
         if (pos < focal->start_object || pos > focal->end) {
           if (pos > focal->end) {
             // I don't think that this is possible because it implies
@@ -111,21 +80,22 @@ void unpack_extract_plan(rds_index *index, size_t id, const sexp_info *focal,
 // NOTE: This needs some care; it's pretty easy to accidenty return an
 // internal SEXP type (most probably a CHARSXP) so this should be
 // handled nicely.
-SEXP r_unpack_extract(SEXP r_x, SEXP r_index, SEXP r_id, SEXP r_reuse_ref) {
+SEXP r_unpack_extract(SEXP r_rdsi, SEXP r_id, SEXP r_reuse_ref) {
+  rdsi_t *rdsi = get_rdsi(r_rdsi, true);
   size_t id = scalar_size(r_id, "id");
   bool reuse_ref = scalar_logical(r_reuse_ref, "reuse_ref");
-  unpack_data *obj = unpack_data_prepare(r_x);
-  obj->index = get_index(r_index, true);
-  if (id > obj->index->id - 1)  {
-    Rf_error("id is out of bounds (%d / %d)", id, obj->index->id - 1);
+
+  unpack_data_t *obj = unpack_data_create_rdsi(rdsi);
+  if (id > (size_t)obj->index->len - 1)  {
+    Rf_error("id is out of bounds (%d / %d)", id, obj->index->len - 1);
   }
-  return unpack_extract(obj, id, reuse_ref, r_index);
+  return unpack_extract(obj, id, reuse_ref, r_rdsi);
 }
 
-SEXP unpack_extract(unpack_data *obj, size_t id, bool reuse_ref,
-                    SEXP r_index) {
-  size_t len = obj->index->id;
-  sexp_info * info = obj->index->index + id;
+SEXP unpack_extract(unpack_data_t *obj, size_t id, bool reuse_ref,
+                    SEXP r_rdsi) {
+  size_t len = obj->index->len;
+  sexp_info_t * info = obj->index->objects + id;
   bool *seen = (bool*) R_alloc(len, sizeof(bool));
   bool *need = (bool*) R_alloc(len, sizeof(bool));
   memset(seen, 0, len * sizeof(bool));
@@ -133,7 +103,7 @@ SEXP unpack_extract(unpack_data *obj, size_t id, bool reuse_ref,
   unpack_extract_plan(obj->index, id, info, seen, need);
 
   if (reuse_ref) {
-    obj->ref_objects = R_ExternalPtrProtected(r_index);
+    obj->ref_objects = rdsi_get_refs(r_rdsi);
   }
   bool create_ref_objects = obj->ref_objects == R_NilValue;
   if (create_ref_objects) {
@@ -143,7 +113,7 @@ SEXP unpack_extract(unpack_data *obj, size_t id, bool reuse_ref,
   int * done = INTEGER(CDR(obj->ref_objects));
   for (size_t i = 0; i < len; ++i) {
     if (need[i]) {
-      size_t j = obj->index->index[i].refid;
+      size_t j = obj->index->objects[i].refid;
       if (done[j - 1] == 1) {
         Rprintf("(unpack_extract) object %d (ref %d) already extracted\n",
                 i, j);
@@ -157,7 +127,7 @@ SEXP unpack_extract(unpack_data *obj, size_t id, bool reuse_ref,
   SEXP ret = unpack_extract1(obj, id);
 
   if (reuse_ref) {
-    R_SetExternalPtrProtected(r_index, obj->ref_objects);
+    rdsi_set_refs(r_rdsi, obj->ref_objects);
   }
   if (create_ref_objects) {
     UNPROTECT(1);
@@ -166,8 +136,8 @@ SEXP unpack_extract(unpack_data *obj, size_t id, bool reuse_ref,
   return ret;
 }
 
-SEXP unpack_extract1(unpack_data *obj, size_t id) {
-  stream_move_to(obj->stream, obj->index->index[id].start_object);
+SEXP unpack_extract1(unpack_data_t *obj, size_t id) {
+  buffer_move_to(obj->buffer, obj->index->objects[id].start_object);
   obj->count = id;
   return unpack_read_item(obj);
 }

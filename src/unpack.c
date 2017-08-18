@@ -6,7 +6,7 @@ static SEXP R_FindNamespace1(SEXP info);
 
 // R interface
 SEXP r_unpack_all(SEXP r_x) {
-  unpack_data_t *obj = unpack_data_create(r_x);
+  unpack_data_t *obj = unpack_data_create_r(r_x);
   obj->ref_objects = PROTECT(init_read_ref(NULL));
   SEXP ret = PROTECT(unpack_read_item(obj));
   buffer_check_empty(obj->buffer);
@@ -484,19 +484,22 @@ void unpack_flags(int flags, sexp_info_t *info) {
 }
 
 // Prep work
-unpack_data_t * unpack_data_create(SEXP r_x) {
+unpack_data_t * unpack_data_create(const data_t * data, R_xlen_t len) {
   unpack_data_t * obj = (unpack_data_t *)R_alloc(1, sizeof(unpack_data_t));
-  if (TYPEOF(r_x) != RAWSXP) {
-    Rf_error("Expected a raw string");
-  }
-
-  unpack_prepare(unpack_target_data(r_x), XLENGTH(r_x), obj);
-
   // These all start with safe values:
   obj->ref_objects = R_NilValue;
   obj->index = NULL;
   obj->count = 0;
+  // Add real data
+  unpack_prepare(data, len, obj);
   return obj;
+}
+
+unpack_data_t * unpack_data_create_r(SEXP r_x) {
+  if (TYPEOF(r_x) != RAWSXP) {
+    Rf_error("Expected a raw string");
+  }
+  return unpack_data_create(unpack_target_data(r_x), XLENGTH(r_x));
 }
 
 const data_t * unpack_target_data(SEXP r_x) {

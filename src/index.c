@@ -17,7 +17,7 @@ static void r_index_finalize(SEXP r_ptr);
 // this probably mixes up two functions
 SEXP r_index_build(SEXP r_x) {
   // Do this first, because that's where the argument validation is
-  unpack_data_t *obj = unpack_data_create(r_x);
+  unpack_data_t *obj = unpack_data_create_r(r_x);
 
   rds_index_t *index = (rds_index_t*) Calloc(1, rds_index_t);
   SEXP ret = PROTECT(R_MakeExternalPtr(index, R_NilValue, R_NilValue));
@@ -28,6 +28,7 @@ SEXP r_index_build(SEXP r_x) {
   index->len = 100; // initial length
   index_grow(index);
   index->n_refs = 0;
+  index->len_data = obj->buffer->len;
 
   obj->index = index;
   obj->ref_objects = PROTECT(init_read_index_ref(obj));
@@ -435,7 +436,8 @@ SEXP index_as_matrix(const rds_index_t *index) {
     refid[i]        = info->refid;
   }
 
-  setAttrib(ret, install("r_refs"), ScalarInteger(index->n_refs));
+  setAttrib(ret, install("n_refs"), ScalarInteger(index->n_refs));
+  setAttrib(ret, install("len_data"), ScalarInteger(index->len_data));
 
   UNPROTECT(3);
   return ret;
