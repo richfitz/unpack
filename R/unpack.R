@@ -54,26 +54,20 @@ index_find_attributes <- function(rdsi, id) {
   .Call(Cindex_find_attributes, rdsi, id)
 }
 
+## Search
+index_search_attribute <- function(rdsi, id, name) {
+  .Call(Cindex_search_attribute, rdsi, id, name)
+}
+index_search_character <- function(rdsi, id, name) {
+  .Call(Cindex_search_character, rdsi, id, name)
+}
+
+## Pick
+unpack_pick_attributes <- function(rdsi, id = 0L, reuse_ref = FALSE) {
+  .Call(Cunpack_pick_attributes, rdsi, id, reuse_ref)
+}
 
 ## helpers
 to_sexptype <- function(x) {
   .Call(Cto_sexptype, x)
-}
-
-## OLD:
-
-## Below here uses both the data and the index; so we'll treat them
-## differently.
-
-## Search
-index_search_attribute <- function(x, index, id, name) {
-  .Call(Cindex_search_attribute, x, index, id, name)
-}
-index_search_character <- function(x, index, id, name) {
-  .Call(Cindex_search_character, x, index, id, name)
-}
-
-## Pick
-unpack_pick_attributes <- function(x, index, id = 0L, reuse_ref = FALSE) {
-  .Call(Cunpack_pick_attributes, x, index, id, reuse_ref)
 }
