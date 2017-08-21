@@ -193,7 +193,7 @@ void index_vector(unpack_data_t *obj, rds_index_mutable_t *index, size_t id, siz
     break;
   case ASCII:
   default:
-    Rf_error("not implemented (index_vector_real)");
+    Rf_error("not implemented (index_vector)");
   }
   index_attributes(obj, index, id);
 }

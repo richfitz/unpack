@@ -23,10 +23,6 @@ void buffer_move_to(buffer_t *buffer, R_xlen_t pos) {
   buffer->pos = pos;
 }
 
-const data_t * buffer_data(buffer_t *buffer) {
-  return buffer->data + buffer->pos;
-}
-
 const data_t * buffer_at(buffer_t *buffer, R_xlen_t pos) {
   if (pos > buffer->len) {
     Rf_error("buffer overflow");
@@ -113,4 +109,52 @@ R_xlen_t buffer_read_length(buffer_t *buffer) {
     Rf_error("negative serialized vector length:\nperhaps long vector from 64-bit version of R?");
   return len;
 #endif
+}
+
+void buffer_read_int_vector(buffer_t *buffer, size_t len, int *dest) {
+  size_t nbytes = (size_t)(sizeof(int) * len);
+  switch (buffer->format) {
+  case BINARY:
+    buffer_read_bytes(buffer, nbytes, dest);
+    break;
+  case XDR:
+    xdr_read_int_vector(buffer->data + buffer->pos, len, dest);
+    buffer_advance(buffer, nbytes);
+    break;
+  case ASCII:
+  default:
+    Rf_error("not implemented (read_int_vector)");
+  }
+}
+
+void buffer_read_double_vector(buffer_t *buffer, size_t len, double *dest) {
+  size_t nbytes = (size_t)(sizeof(double) * len);
+  switch (buffer->format) {
+  case BINARY:
+    buffer_read_bytes(buffer, nbytes, dest);
+    break;
+  case XDR:
+    xdr_read_double_vector(buffer->data + buffer->pos, len, dest);
+    buffer_advance(buffer, nbytes);
+    break;
+  case ASCII:
+  default:
+    Rf_error("not implemented (read_double_vector)");
+  }
+}
+
+void buffer_read_complex_vector(buffer_t *buffer, size_t len, Rcomplex *dest) {
+  size_t nbytes = (size_t)(sizeof(Rcomplex) * len);
+  switch (buffer->format) {
+  case BINARY:
+    buffer_read_bytes(buffer, nbytes, dest);
+    break;
+  case XDR:
+    xdr_read_complex_vector(buffer->data + buffer->pos, len, dest);
+    buffer_advance(buffer, nbytes);
+    break;
+  case ASCII:
+  default:
+    Rf_error("not implemented (read_complex_vector)");
+  }
 }
