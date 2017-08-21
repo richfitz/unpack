@@ -96,6 +96,17 @@ SEXP r_to_sexptype(SEXP x) {
   return ret;
 }
 
+SEXP r_to_typeof(SEXP x) {
+  int * v = INTEGER(x);
+  SEXP ret = PROTECT(allocVector(STRSXP, length(x)));
+  for (R_xlen_t i = 0; i < length(x); ++i) {
+    const char *name = to_typeof(v[i], NULL);
+    SET_STRING_ELT(ret, i, name == NULL ? NA_STRING : mkChar(name));
+  }
+  UNPROTECT(1);
+  return ret;
+}
+
 const char* to_sexptype(int type, const char * unknown) {
   switch(type) {
   case SYMSXP:            return "SYMSXP";
@@ -120,6 +131,7 @@ const char* to_sexptype(int type, const char * unknown) {
   case WEAKREFSXP:        return "WEAKREFSXP";
   case RAWSXP:            return "RAWSXP";
   case S4SXP:             return "S4SXP";
+    // These  are not real types
   case BASEENV_SXP:       return "BASEENV";
   case EMPTYENV_SXP:      return "EMPTYENV";
   case GENERICREFSXP:     return "GENERICREFSXP";
@@ -133,6 +145,50 @@ const char* to_sexptype(int type, const char * unknown) {
   case GLOBALENV_SXP:     return "GLOBALENV";
   case NILVALUE_SXP:      return "NILVALUE";
   case REFSXP:            return "REFSXP";
+    // Unlikely
+  default:                return unknown;
+  }
+}
+
+const char * to_typeof(int type, const char * unknown) {
+  switch(type) {
+  case SYMSXP:            return "symbol";
+  case LISTSXP:           return "pairlist";
+  case CLOSXP:            return "function";
+  case ENVSXP:            return "environment";
+  case PROMSXP:           return "promise";
+  case LANGSXP:           return "language"; // I *think*
+  case SPECIALSXP:        return "SPECIALSXP"; // not sure
+  case BUILTINSXP:        return "builtin";
+  case CHARSXP:           return "CHARSXP"; // internal type
+  case LGLSXP:            return "logical";
+  case INTSXP:            return "integer";
+  case REALSXP:           return "double";
+  case CPLXSXP:           return "complex";
+  case STRSXP:            return "character";
+  case DOTSXP:            return "DOTSXP"; // internal type
+  case VECSXP:            return "list";
+  case EXPRSXP:           return "expression";
+  case BCODESXP:          return "BCODESXP"; // possibly internal?
+  case EXTPTRSXP:         return "externalptr";
+  case WEAKREFSXP:        return "weakref";
+  case RAWSXP:            return "raw";
+  case S4SXP:             return "S4";
+    // These  are not real types
+  case BASEENV_SXP:       return "environment";
+  case EMPTYENV_SXP:      return "environment";
+  case GENERICREFSXP:     return "GENERICREFSXP"; // internal type
+  case CLASSREFSXP:       return "CLASSREFSXP"; // internal type
+  case PERSISTSXP:        return "PERSISTSXP"; // internal type
+  case PACKAGESXP:        return "environment";
+  case NAMESPACESXP:      return "environment";
+  case BASENAMESPACE_SXP: return "environment";
+  case MISSINGARG_SXP:    return "MISSINGARG"; // internal type
+  case UNBOUNDVALUE_SXP:  return "UNBOUNDVALUE"; // internal type
+  case GLOBALENV_SXP:     return "environment";
+  case NILVALUE_SXP:      return "NULL";
+  case REFSXP:            return "REFSXP"; // internal type
+    // Unlikely
   default:                return unknown;
   }
 }

@@ -40,6 +40,9 @@ static const R_CallMethodDef call_methods[] = {
 
   // pick things
   {"Cunpack_pick_attributes",      (DL_FUNC) &r_unpack_pick_attributes,    3},
+  {"Cunpack_pick_attribute",       (DL_FUNC) &r_unpack_pick_attribute,     4},
+  {"Cunpack_pick_typeof",          (DL_FUNC) &r_unpack_pick_typeof,        2},
+  {"Cunpack_pick_class",           (DL_FUNC) &r_unpack_pick_class,         3},
 
   // more
   {"Csexptypes",                   (DL_FUNC) &r_sexptypes,                 0},

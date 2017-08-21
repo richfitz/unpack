@@ -66,6 +66,23 @@ index_search_character <- function(rdsi, id, name) {
 unpack_pick_attributes <- function(rdsi, id = 0L, reuse_ref = FALSE) {
   .Call(Cunpack_pick_attributes, rdsi, id, reuse_ref)
 }
+unpack_pick_attribute <- function(rdsi, name, id = 0L, reuse_ref = FALSE) {
+  .Call(Cunpack_pick_attribute, rdsi, name, id, reuse_ref)
+}
+
+## Some convenience functions
+unpack_pick_class <- function(rdsi, id = 0L, reuse_ref = FALSE) {
+  .Call(Cunpack_pick_class, rdsi, id, reuse_ref)
+}
+unpack_pick_dim <- function(rdsi, id = 0L, reuse_ref = FALSE) {
+  unpack_pick_attribute(rdsi, "dim", id, reuse_ref)
+}
+unpack_pick_names <- function(rdsi, id = 0L, reuse_ref = FALSE) {
+  unpack_pick_attribute(rdsi, "names", id, reuse_ref)
+}
+unpack_pick_typeof <- function(rdsi, id = 0L) {
+  .Call(Cunpack_pick_typeof, rdsi, id)
+}
 
 ## helpers
 to_sexptype <- function(x) {
