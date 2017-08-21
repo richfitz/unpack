@@ -17,7 +17,7 @@ SEXP r_unpack_extract_plan(SEXP r_rdsi, SEXP r_id) {
   memset(seen, 0, len * sizeof(bool));
   memset(need, 0, len * sizeof(bool));
 
-  sexp_info_t * info = index->objects + id;
+  const sexp_info_t * info = index->objects + id;
   unpack_extract_plan(index, id, info, seen, need);
 
   SEXP r_seen = PROTECT(allocVector(LGLSXP, len));
@@ -35,11 +35,11 @@ SEXP r_unpack_extract_plan(SEXP r_rdsi, SEXP r_id) {
 void unpack_extract_plan(const rds_index_t *index, size_t id,
                          const sexp_info_t *focal,
                          bool *seen, bool *need) {
-  sexp_info_t *info = index->objects + id;
+  const sexp_info_t *info = index->objects + id;
   R_xlen_t end = info->end;
   for (size_t i = id; i < (size_t)index->len - 1; ++i) {
     if (!seen[i]) {
-      sexp_info_t *child = index->objects + i;
+      const sexp_info_t *child = index->objects + i;
       if (child->start_data > end) {
         // only search as far as the end of the focal sexp:
         break;
@@ -95,7 +95,7 @@ SEXP r_unpack_extract(SEXP r_rdsi, SEXP r_id, SEXP r_reuse_ref) {
 SEXP unpack_extract(unpack_data_t *obj, size_t id, bool reuse_ref,
                     SEXP r_rdsi) {
   size_t len = obj->index->len;
-  sexp_info_t * info = obj->index->objects + id;
+  const sexp_info_t * info = obj->index->objects + id;
   bool *seen = (bool*) R_alloc(len, sizeof(bool));
   bool *need = (bool*) R_alloc(len, sizeof(bool));
   memset(seen, 0, len * sizeof(bool));

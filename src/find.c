@@ -53,7 +53,7 @@ int index_find_element(const rds_index_t *index, size_t id, size_t i) {
   if (id > ((size_t)index->len - 1)) {
     Rf_error("id is out of bounds");
   }
-  sexp_info_t * info = index->objects + id;
+  const sexp_info_t * info = index->objects + id;
   switch(info->type) {
   case VECSXP:
     return index_find_element_list(index, id, i);
@@ -83,7 +83,7 @@ int index_find_nth_child(const rds_index_t *index, size_t id, size_t n) {
 int index_find_next_child(const rds_index_t *index, size_t id, size_t at) {
   R_xlen_t last = index->len - 1;
   R_xlen_t end = index->objects[id].end;
-  sexp_info_t *info = index->objects + at;
+  const sexp_info_t *info = index->objects + at;
   do {
     info++;
     if (info->parent == (R_xlen_t)id) {
@@ -94,7 +94,7 @@ int index_find_next_child(const rds_index_t *index, size_t id, size_t at) {
 }
 
 int index_find_car(const rds_index_t * index, int id) {
-  sexp_info_t *info = index->objects + id;
+  const sexp_info_t *info = index->objects + id;
   if (info->type != LISTSXP) {
     Rf_error("index_find_car requres a LISTSXP");
   }
@@ -102,7 +102,7 @@ int index_find_car(const rds_index_t * index, int id) {
 }
 
 int index_find_cdr(const rds_index_t * index, int id) {
-  sexp_info_t *info = index->objects + id;
+  const sexp_info_t *info = index->objects + id;
   if (info->type != LISTSXP) {
     Rf_error("index_find_cdr requres a LISTSXP");
   }
@@ -110,7 +110,7 @@ int index_find_cdr(const rds_index_t * index, int id) {
 }
 
 int index_find_attributes(const rds_index_t * index, int id) {
-  sexp_info_t *info = index->objects + id;
+  const sexp_info_t *info = index->objects + id;
   return info->has_attr ?
     index_find_id(index, info->start_attr, id) :
     NA_INTEGER;

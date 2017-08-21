@@ -55,7 +55,7 @@ typedef struct {
 // This is our index; it is not a big object.
 typedef struct {
   // A vector of useful indices
-  sexp_info_t *objects;
+  const sexp_info_t *objects;
   // The length of 'objects'
   R_xlen_t len;
   // The number of references (this can be computed from objects/len
@@ -64,6 +64,14 @@ typedef struct {
   // The total length of the data
   R_xlen_t len_data;
 } rds_index_t;
+
+// And this is the one for building with
+typedef struct {
+  sexp_info_t *objects;
+  R_xlen_t len;
+  size_t n_refs;
+  R_xlen_t len_data;
+} rds_index_mutable_t;
 
 // This will be the object that we pass back to R; it contains the
 // data, index and a set of reference objects.  These will be moved
@@ -86,7 +94,7 @@ typedef struct {
   // so that we can safely add objects into the data and resize as needed.
   SEXP ref_objects;
   // An index, if we are using one
-  rds_index_t *index;
+  const rds_index_t * index;
 
   // The object position in the stream.  This is used to assign the
   // next object id into a sexp_info_t (which is then used to organise

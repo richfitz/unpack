@@ -25,7 +25,7 @@ SEXP unpack_read_item(unpack_data_t *obj) {
     // here in the index directly I think.  They're used in a couple
     // of places anyway.  But for now, this is OK and no worse than
     // what happens if we go all the way through the usual resolution.
-    sexp_info_t *info_prev = obj->index->objects + id;
+    const sexp_info_t *info_prev = obj->index->objects + id;
     size_t refid = info_prev->refid;
     if (refid > 0 && info_prev->type != REFSXP) {
       if (INTEGER(CDR(obj->ref_objects))[refid - 1]) {
@@ -552,7 +552,7 @@ void unpack_check_version(unpack_data_t *obj) {
 
 // References
 // MakeReadRefTable
-SEXP init_read_ref(rds_index_t *index) {
+SEXP init_read_ref(const rds_index_t *index) {
   SEXP ret;
   size_t initial_size =
     index == NULL ? INITIAL_REFREAD_TABLE_SIZE : index->n_refs;

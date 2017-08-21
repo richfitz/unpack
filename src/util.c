@@ -35,3 +35,14 @@ void assert_scalar_character(SEXP x, const char *name) {
 bool same_string(const char *a, const char *b, size_t len_a, size_t len_b) {
   return len_a == len_b && memcmp(a, b, len_a) == 0;
 }
+
+void * check_extptr_valid(SEXP r_ptr, const char * name, bool closed_error) {
+  if (TYPEOF(r_ptr) != EXTPTRSXP) {
+    Rf_error("Expected an external pointer for 'name'", name);
+  }
+  void * data = R_ExternalPtrAddr(r_ptr);
+  if (closed_error && data == NULL) {
+    Rf_error("'%s' has been freed; can't use!", name);
+  }
+  return data;
+}

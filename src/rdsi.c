@@ -1,5 +1,6 @@
 #include "rdsi.h"
 #include "index.h"
+#include "util.h"
 
 // Within the "protected" tag of rdsi we store a pairlist containing:
 //   - the raw data
@@ -8,10 +9,8 @@
 static void r_rdsi_finalize(SEXP r_rdsi);
 
 SEXP r_rdsi_build(SEXP r_x) {
-  SEXP r_index = PROTECT(r_index_build(r_x));
-  rds_index_t * index = get_index(r_index, true);
+  const rds_index_t *index = index_build(r_x);
   SEXP ret = rdsi_create(r_x, index);
-  UNPROTECT(1);
   return ret;
 }
 
@@ -28,7 +27,7 @@ SEXP r_rdsi_get_data(SEXP r_rdsi) {
 }
 
 SEXP r_rdsi_get_refs(SEXP r_rdsi) {
-  get_rdsi(r_rdsi, true); // for side effects
+  check_extptr_valid(r_rdsi, "rdsi", true);
   SEXP refs = rdsi_get_refs(r_rdsi);
   return refs == R_NilValue ? R_NilValue : CAR(refs);
 }
@@ -43,7 +42,7 @@ SEXP rdsi_get_refs(SEXP r_rdsi) {
 }
 
 void rdsi_set_refs(SEXP r_rdsi, SEXP refs) {
-  get_index(r_rdsi, true); // for side effects
+  check_extptr_valid(r_rdsi, "rdsi", true);
   SEXP prot = R_ExternalPtrProtected(r_rdsi);
   SETCDR(prot, refs);
   R_SetExternalPtrProtected(r_rdsi, prot);
@@ -73,14 +72,7 @@ SEXP rdsi_create(SEXP r_data, const rds_index_t * index) {
 }
 
 rdsi_t * get_rdsi(SEXP r_rdsi, bool closed_error) {
-  if (TYPEOF(r_rdsi) != EXTPTRSXP) {
-    Rf_error("Expected an external pointer for 'index'");
-  }
-  rdsi_t * ret = (rdsi_t*)R_ExternalPtrAddr(r_rdsi);
-  if (closed_error && ret == NULL) {
-    Rf_error("object has been freed; can't use!");
-  }
-  return ret;
+  return (rdsi_t*) check_extptr_valid(r_rdsi, "rdsi", closed_error);
 }
 
 const rds_index_t * get_rdsi_index(SEXP r_rdsi) {
@@ -106,6 +98,11 @@ unpack_data_t * unpack_data_create_rdsi(rdsi_t *rdsi) {
 static void r_rdsi_finalize(SEXP r_rdsi) {
   rdsi_t * rdsi = get_rdsi(r_rdsi, false);
   if (rdsi == NULL) {
+    // NOTE: const cast for index->objects here, required in order to
+    // free the const pointer
+    void *objects = (void*) rdsi->index->objects;
+    Free(objects);
+    Free(rdsi->index);
     Free(rdsi);
     R_SetExternalPtrProtected(r_rdsi, R_NilValue);
     R_ClearExternalPtr(r_rdsi);

@@ -32,7 +32,7 @@ int index_search_attribute(unpack_data_t * obj, size_t id, const char *name) {
   if (id_attr == NA_INTEGER) {
     return NA_INTEGER;
   }
-  sexp_info_t *info_attr = obj->index->objects + (size_t) id_attr;
+  const sexp_info_t *info_attr = obj->index->objects + (size_t) id_attr;
 
   const size_t name_len = strlen(name);
   const char *name_data;
@@ -65,7 +65,7 @@ int index_search_attribute(unpack_data_t * obj, size_t id, const char *name) {
 // string!  We return this in base-1 because that's what nth_child
 // works with.
 int index_search_character(unpack_data_t * obj, size_t id, const char *str) {
-  sexp_info_t *info = obj->index->objects + id;
+  const sexp_info_t *info = obj->index->objects + id;
   // TODO: I think for consistency this belongs in the r_ method
   if (info->type != STRSXP) {
     Rf_error("index_search_character requires a STRSXP, not a %s",
@@ -95,7 +95,7 @@ bool index_compare_charsxp(unpack_data_t * obj, size_t id,
                            const char *str_data, size_t str_length,
                            size_t str_data_length) {
   bool same = false;
-  sexp_info_t *info_char = obj->index->objects + id;
+  const sexp_info_t *info_char = obj->index->objects + id;
   if ((size_t)info_char->length == str_length) {
     // TODO: in the case of ascii, check that start_attr - start_data
     // is the same as str_data_length before doing the memcpy.  We

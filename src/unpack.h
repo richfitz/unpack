@@ -51,7 +51,7 @@ void unpack_prepare(const data_t *data, R_xlen_t len, unpack_data_t *obj);
 void unpack_check_format(unpack_data_t *obj);
 void unpack_check_version(unpack_data_t *obj);
 
-SEXP init_read_ref(rds_index_t *index);
+SEXP init_read_ref(const rds_index_t *index);
 SEXP get_read_ref(unpack_data_t * obj, sexp_info_t *info, int index);
 void add_read_ref(unpack_data_t * obj, SEXP value, sexp_info_t *info);
 
