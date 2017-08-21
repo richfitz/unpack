@@ -5,9 +5,9 @@ test_that("simple case", {
   attr(x, "class") <- "mything"
   names(x) <- c("one", "two", "three", "four", "five")
   xb <- serialize_binary(x)
-  idx_ptr <- unpack_index(xb, TRUE)
+  rdsi <- rdsi_build(xb)
 
-  expect_identical(unpack_pick_attributes(xb, idx_ptr),
+  expect_identical(unpack_pick_attributes(rdsi),
                    as.pairlist(attributes(x)))
 })
 

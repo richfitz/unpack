@@ -35,6 +35,7 @@ SEXP r_index_build(SEXP r_x) {
 
   index_item(obj, 0);
   buffer_check_empty(obj->buffer);
+  index->len = obj->count;
 
   obj->ref_objects = R_NilValue;
 
@@ -390,6 +391,7 @@ void add_read_index_ref(unpack_data_t *obj, size_t id) {
     memcpy(INTEGER(newdata), INTEGER(data), LENGTH(data) * sizeof(int));
     data = newdata;
   }
+  obj->index->objects[id].refid = count + 1;
   INTEGER(data)[count] = id;
   Rprintf("Inserting reference %d (refid %d)\n", count, id);
 }

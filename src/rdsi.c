@@ -1,6 +1,10 @@
 #include "rdsi.h"
 #include "index.h"
 
+// Within the "protected" tag of rdsi we store a pairlist containing:
+//   - the raw data
+//   - any extracted reference objects (itself (VECSXP . NIL))
+// this somewhat complicates extraction but it does work
 static void r_rdsi_finalize(SEXP r_rdsi);
 
 SEXP r_rdsi_build(SEXP r_x) {
@@ -25,7 +29,8 @@ SEXP r_rdsi_get_data(SEXP r_rdsi) {
 
 SEXP r_rdsi_get_refs(SEXP r_rdsi) {
   get_rdsi(r_rdsi, true); // for side effects
-  return rdsi_get_refs(r_rdsi);
+  SEXP refs = rdsi_get_refs(r_rdsi);
+  return refs == R_NilValue ? R_NilValue : CAR(refs);
 }
 
 SEXP r_rdsi_del_refs(SEXP r_rdsi) {
@@ -34,8 +39,7 @@ SEXP r_rdsi_del_refs(SEXP r_rdsi) {
 }
 
 SEXP rdsi_get_refs(SEXP r_rdsi) {
-  SEXP refs = CDR(R_ExternalPtrProtected(r_rdsi));
-  return refs == R_NilValue ? R_NilValue : CAR(refs);
+  return CDR(R_ExternalPtrProtected(r_rdsi));
 }
 
 void rdsi_set_refs(SEXP r_rdsi, SEXP refs) {
@@ -64,6 +68,7 @@ SEXP rdsi_create(SEXP r_data, const rds_index_t * index) {
   SEXP prot = PROTECT(CONS(r_data, R_NilValue));
   SEXP ret = PROTECT(R_MakeExternalPtr(rdsi, R_NilValue, prot));
   R_RegisterCFinalizer(ret, r_rdsi_finalize);
+  UNPROTECT(2);
   return ret;
 }
 
@@ -84,14 +89,25 @@ const rds_index_t * get_rdsi_index(SEXP r_rdsi) {
 }
 
 unpack_data_t * unpack_data_create_rdsi(rdsi_t *rdsi) {
-  return unpack_data_create(rdsi->data, rdsi->index->len_data);
+  unpack_data_t *obj = unpack_data_create(rdsi->data, rdsi->index->len_data);
+  // TODO: this is not ideal - this drops the const qualifier on
+  // index.  This is because when obj_index is used by *index_item* it
+  // is used in a write way.
+  //
+  // The solution is to rewrite the index code, after finishing the
+  // current refactor, to *never* use obj->index and instead use a
+  // third argument that is the index that we are building as the
+  // target.  that will be much simpler to work with and then we can
+  // keep everything nice and simple.
+  obj->index = rdsi->index;
+  return obj;
 }
 
 static void r_rdsi_finalize(SEXP r_rdsi) {
   rdsi_t * rdsi = get_rdsi(r_rdsi, false);
   if (rdsi == NULL) {
     Free(rdsi);
-    R_ClearExternalPtr(r_rdsi);
     R_SetExternalPtrProtected(r_rdsi, R_NilValue);
+    R_ClearExternalPtr(r_rdsi);
   }
 }
