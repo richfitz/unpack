@@ -11,49 +11,46 @@ static uint32_t new_ntohl(uint32_t x) {
 
 // Tihis needs to take a *int32_t argument because we write the values
 // into this position for the double.
-void xdr_read_int(void *src, int32_t *dst) {
+void xdr_read_int(const void *src, int32_t *dst) {
   *dst = (int32_t)new_ntohl((uint32_t)(*((int32_t *)(src))));
 }
 
-void xdr_read_double(void *src, double *dst) {
+void xdr_read_double(const void *src, double *dst) {
   int32_t *lp = (int32_t *)dst;
   xdr_read_int(src, lp + 1);
   xdr_read_int(((int*) src) + 1, lp);
 }
 
-void xdr_read_complex(void *src, Rcomplex *dst) {
+void xdr_read_complex(const void *src, Rcomplex *dst) {
   dst->r = xdr_decode_double(src);
   dst->i = xdr_decode_double(((double*) src) + 1);
 }
 
-void xdr_read_int_vector(void *src, size_t n, int *dst) {
+void xdr_read_int_vector(const void *src, size_t n, int *dst) {
   for (size_t i = 0; i < n; ++i) {
-    xdr_read_int((int*)src + i * sizeof(int32_t),
-                 dst + i * sizeof(int32_t));
+    xdr_read_int((int*)src + i, dst + i);
   }
 }
 
-void xdr_read_double_vector(void *src, size_t n, double *dst) {
+void xdr_read_double_vector(const void *src, size_t n, double *dst) {
   for (size_t i = 0; i < n; ++i) {
-    xdr_read_double((int*)src + i * sizeof(double),
-                    dst + i * sizeof(double));
+    xdr_read_double((double*)src + i, dst + i);
   }
 }
 
-void xdr_read_rcomplex_vector(void *src, size_t n, Rcomplex *dst) {
+void xdr_read_complex_vector(const void *src, size_t n, Rcomplex *dst) {
   for (size_t i = 0; i < n; ++i) {
-    xdr_read_complex((int*)src + i * sizeof(Rcomplex),
-                    dst + i * sizeof(Rcomplex));
+    xdr_read_complex((Rcomplex*)src + i, dst + i);
   }
 }
 
-int xdr_decode_int(void *src) {
+int xdr_decode_int(const void *src) {
   int ret;
   xdr_read_int(src, &ret);
   return ret;
 }
 
-double xdr_decode_double(void *src) {
+double xdr_decode_double(const void *src) {
   double ret;
   xdr_read_double(src, &ret);
   return ret;
@@ -91,7 +88,7 @@ SEXP r_xdr_read_complex(SEXP r_x) {
   }
   size_t n = LENGTH(r_x) / sizeof(Rcomplex);
   SEXP ret = PROTECT(allocVector(CPLXSXP, n));
-  xdr_read_rcomplex_vector(RAW(r_x), n, COMPLEX(ret));
+  xdr_read_complex_vector(RAW(r_x), n, COMPLEX(ret));
   UNPROTECT(1);
   return ret;
 }

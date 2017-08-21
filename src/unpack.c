@@ -1,6 +1,7 @@
 #include "unpack.h"
 #include "upstream.h"
 #include "helpers.h"
+#include "xdr.h"
 
 static SEXP R_FindNamespace1(SEXP info);
 
@@ -136,14 +137,17 @@ SEXP unpack_read_item(unpack_data_t *obj) {
 // InIntegerVec
 SEXP unpack_read_vector_integer(unpack_data_t *obj, sexp_info_t *info) {
   info->length = buffer_read_length(obj->buffer);
+  size_t nbytes = (size_t)(sizeof(int) * info->length);
   SEXP s = PROTECT(allocVector(info->type, info->length));
   switch (obj->buffer->format) {
   case BINARY:
-    buffer_read_bytes(obj->buffer, (size_t)(sizeof(int) * info->length),
-                      INTEGER(s));
+    buffer_read_bytes(obj->buffer, nbytes, INTEGER(s));
+    break;
+  case XDR:
+    xdr_read_int_vector(buffer_data(obj->buffer), info->length, INTEGER(s));
+    buffer_advance(obj->buffer, nbytes);
     break;
   case ASCII:
-  case XDR:
   default:
     Rf_error("not implemented (read_vector_integer)");
   }
@@ -155,14 +159,17 @@ SEXP unpack_read_vector_integer(unpack_data_t *obj, sexp_info_t *info) {
 // InRealVec
 SEXP unpack_read_vector_real(unpack_data_t *obj, sexp_info_t *info) {
   info->length = buffer_read_length(obj->buffer);
+  size_t nbytes = (size_t)(sizeof(double) * info->length);
   SEXP s = PROTECT(allocVector(info->type, info->length));
   switch (obj->buffer->format) {
   case BINARY:
-    buffer_read_bytes(obj->buffer, (size_t)(sizeof(double) * info->length),
-                      REAL(s));
+    buffer_read_bytes(obj->buffer, nbytes, REAL(s));
+    break;
+  case XDR:
+    xdr_read_double_vector(buffer_data(obj->buffer), info->length, REAL(s));
+    buffer_advance(obj->buffer, nbytes);
     break;
   case ASCII:
-  case XDR:
   default:
     Rf_error("not implemented (read_vector_real)");
   }
@@ -174,14 +181,17 @@ SEXP unpack_read_vector_real(unpack_data_t *obj, sexp_info_t *info) {
 // InComplexVec
 SEXP unpack_read_vector_complex(unpack_data_t *obj, sexp_info_t *info) {
   info->length = buffer_read_length(obj->buffer);
+  size_t nbytes = (size_t)(sizeof(Rcomplex) * info->length);
   SEXP s = PROTECT(allocVector(info->type, info->length));
   switch (obj->buffer->format) {
   case BINARY:
-    buffer_read_bytes(obj->buffer, (size_t)(sizeof(Rcomplex) * info->length),
-                      COMPLEX(s));
+    buffer_read_bytes(obj->buffer, nbytes, COMPLEX(s));
+    break;
+  case XDR:
+    xdr_read_complex_vector(buffer_data(obj->buffer), info->length, COMPLEX(s));
+    buffer_advance(obj->buffer, nbytes);
     break;
   case ASCII:
-  case XDR:
   default:
     Rf_error("not impemented (read_vector_complex)");
   }

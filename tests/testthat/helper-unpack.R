@@ -1,9 +1,9 @@
-serialize_binary <- function(x) {
-  serialize(x, NULL, xdr = FALSE)
+serialize_binary <- function(x, xdr = FALSE) {
+  serialize(x, NULL, xdr = xdr)
 }
 
-expect_roundtrip <- function(x) {
-  testthat::expect_identical(unpack_all(serialize_binary(x)), x)
+expect_roundtrip <- function(x, xdr = FALSE) {
+  testthat::expect_identical(unpack_all(serialize_binary(x, xdr)), x)
 }
 
 unpack_index <- function(x) {

@@ -18,6 +18,7 @@ test_that("integer", {
 test_that("numeric", {
   expect_roundtrip(numeric(0))
   expect_roundtrip(c(NA_real_, runif(5)))
+  expect_roundtrip(c(NA_real_, runif(5)), TRUE)
 })
 
 test_that("complex", {

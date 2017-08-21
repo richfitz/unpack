@@ -1,4 +1,5 @@
 #include "buffer.h"
+#include "xdr.h"
 
 buffer_t * buffer_create(const data_t *data, R_xlen_t len) {
   buffer_t *buffer = (buffer_t *)R_alloc(1, sizeof(buffer_t));
@@ -20,6 +21,10 @@ void buffer_move_to(buffer_t *buffer, R_xlen_t pos) {
     Rf_error("buffer overflow");
   }
   buffer->pos = pos;
+}
+
+const data_t * buffer_data(buffer_t *buffer) {
+  return buffer->data + buffer->pos;
 }
 
 const data_t * buffer_at(buffer_t *buffer, R_xlen_t pos) {
@@ -63,8 +68,11 @@ int buffer_read_integer(buffer_t *buffer) {
   case BINARY:
     buffer_read_bytes(buffer, sizeof(int), &i);
     return i;
-  case ASCII:
   case XDR:
+    xdr_read_int(buffer->data + buffer->pos, &i);
+    buffer_advance(buffer, sizeof(int));
+    return i;
+  case ASCII:
   default:
     Rf_error("not implemented (read_integer)");
   }
