@@ -229,8 +229,7 @@ test_that("symbol reference", {
   idx <- rdsi_get_index_matrix(rdsi)
 
   res <- unpack_extract_plan(rdsi, 8L)
-  expect_equal(sum(res), 1L)
-  expect_equal(which(res), 4L)
+  expect_equal(res, c(3L, NA_integer_))
   expect_equal(to_sexptype(idx[4, "type"]), "SYMSXP")
 
   res <- unpack_extract(rdsi, 8L)

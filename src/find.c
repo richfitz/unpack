@@ -121,6 +121,7 @@ int index_find_id(const rds_index_t * index, int at, size_t start_id) {
   size_t i = start_id;
   R_xlen_t start_at = index->objects[i].start_object,
     end = index->objects[i].end;
+  // TODO: do a bisect search here; see nycflights example for why
   do {
     if (start_at == at) {
       return i;
