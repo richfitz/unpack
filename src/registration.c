@@ -6,6 +6,7 @@
 #include "find.h"
 #include "search.h"
 #include "pick.h"
+#include "xdr.h"
 
 #include <R_ext/Rdynload.h>
 #include <Rversion.h>
@@ -43,6 +44,11 @@ static const R_CallMethodDef call_methods[] = {
   // more
   {"Csexptypes",                   (DL_FUNC) &r_sexptypes,                 0},
   {"Cto_sexptype",                 (DL_FUNC) &r_to_sexptype,               1},
+
+  // xdr
+  {"Cxdr_read_int",                (DL_FUNC) &r_xdr_read_int,              1},
+  {"Cxdr_read_double",             (DL_FUNC) &r_xdr_read_double,           1},
+  {"Cxdr_read_complex",            (DL_FUNC) &r_xdr_read_complex,          1},
 
   {NULL,                           NULL,                                   0}
 };
