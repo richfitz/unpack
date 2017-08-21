@@ -188,10 +188,10 @@ void index_vector(unpack_data_t *obj, rds_index_mutable_t *index, size_t id, siz
   info->start_data = obj->buffer->pos;
   switch (obj->buffer->format) {
   case BINARY:
+  case XDR:
     buffer_advance(obj->buffer, element_size * info->length);
     break;
   case ASCII:
-  case XDR:
   default:
     Rf_error("not implemented (index_vector_real)");
   }
