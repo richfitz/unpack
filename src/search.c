@@ -2,6 +2,7 @@
 #include "util.h"
 #include "index.h"
 #include "rdsi.h"
+#include "helpers.h"
 
 SEXP r_index_search_attribute(SEXP r_rdsi, SEXP r_id, SEXP r_name) {
   rdsi_t *rdsi = get_rdsi(r_rdsi, true);
@@ -25,6 +26,18 @@ SEXP r_index_search_character(SEXP r_rdsi, SEXP r_id, SEXP r_str) {
 
   unpack_data_t *obj = unpack_data_create_rdsi(rdsi);
   return ScalarInteger(index_search_character(obj, id, str));
+}
+
+SEXP r_index_search_inherits(SEXP r_rdsi, SEXP r_id, SEXP r_what) {
+  rdsi_t *rdsi = get_rdsi(r_rdsi, true);
+  size_t id = scalar_size(r_id, "id");
+  if (id > ((size_t)rdsi->index->len - 1)) {
+    Rf_error("id is out of bounds");
+  }
+  const char * what = scalar_character(r_what, "what");
+
+  unpack_data_t *obj = unpack_data_create_rdsi(rdsi);
+  return ScalarLogical(index_search_inherits(obj, id, what));
 }
 
 int index_search_attribute(unpack_data_t * obj, size_t id, const char *name) {
@@ -118,4 +131,18 @@ bool index_compare_charsxp_str(unpack_data_t * obj, size_t id,
                                     str_data_len);
   bool same = memcmp(str_cmp, str_data, str_data_len) == 0;
   return same;
+}
+
+bool index_search_inherits(unpack_data_t *obj, size_t id, const char *what) {
+  int id_attr = index_search_attribute(obj, id, "class");
+  if (id_attr == NA_INTEGER) {
+    const char *cl = to_typeof(obj->index->objects[id].type, NULL);
+    if (cl == NULL) {
+      Rf_error("Unknown type");
+    }
+    return strcmp(cl, what) == 0;
+  } else {
+    int res = index_search_character(obj, id_attr, what);
+    return res != NA_INTEGER;
+  }
 }

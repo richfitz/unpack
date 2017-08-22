@@ -64,6 +64,9 @@ index_search_attribute <- function(rdsi, id, name) {
 index_search_character <- function(rdsi, id, name) {
   .Call(Cindex_search_character, rdsi, id, name)
 }
+index_search_inherits <- function(rdsi, id, what) {
+  .Call(Cindex_search_inherits, rdsi, id, what)
+}
 
 ## Pick
 unpack_pick_attributes <- function(rdsi, id = 0L, reuse_ref = FALSE) {

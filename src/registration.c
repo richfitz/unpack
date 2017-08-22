@@ -38,6 +38,7 @@ static const R_CallMethodDef call_methods[] = {
   // search for things
   {"Cindex_search_attribute",      (DL_FUNC) &r_index_search_attribute,    3},
   {"Cindex_search_character",      (DL_FUNC) &r_index_search_character,    3},
+  {"Cindex_search_inherits",       (DL_FUNC) &r_index_search_inherits,     3},
 
   // pick things
   {"Cunpack_pick_attributes",      (DL_FUNC) &r_unpack_pick_attributes,    3},

@@ -333,3 +333,21 @@ test_that("recursive", {
   expect_identical(unpack_extract(rdsi, i[[3]] - 1L, reuse_ref = TRUE),
                    res2)
 })
+
+test_that("inherits", {
+  df <- iris
+  rdsi <- rdsi_build(serialize_binary(df))
+  idx <- rdsi_get_index_matrix(rdsi)
+  expect_true(index_search_inherits(rdsi, 0L, "data.frame"))
+  expect_false(index_search_inherits(rdsi, 0L, "data_frame"))
+  expect_true(index_search_inherits(rdsi, 1L, "numeric"))
+
+  class(df) <- c("tbl_df", "tbl", "data.frame")
+
+  rdsi <- rdsi_build(serialize_binary(df))
+  idx <- rdsi_get_index_matrix(rdsi)
+  expect_true(index_search_inherits(rdsi, 0L, "data.frame"))
+  expect_true(index_search_inherits(rdsi, 0L, "tbl"))
+  expect_true(index_search_inherits(rdsi, 0L, "tbl_df"))
+  expect_false(index_search_inherits(rdsi, 0L, "data_frame"))
+})

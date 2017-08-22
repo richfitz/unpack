@@ -163,7 +163,7 @@ const char * to_typeof(int type, const char * unknown) {
   case CHARSXP:           return "CHARSXP"; // internal type
   case LGLSXP:            return "logical";
   case INTSXP:            return "integer";
-  case REALSXP:           return "double";
+  case REALSXP:           return "numeric"; // for inherits()
   case CPLXSXP:           return "complex";
   case STRSXP:            return "character";
   case DOTSXP:            return "DOTSXP"; // internal type
