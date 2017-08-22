@@ -1,5 +1,6 @@
 #include <R.h>
 #include <Rinternals.h>
+#include <stdint.h>
 
 void xdr_read_int(const void *src, int32_t *dst);
 void xdr_read_double(const void *src, double *dst);
