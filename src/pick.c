@@ -17,7 +17,7 @@ SEXP r_unpack_pick_attributes(SEXP r_rdsi, SEXP r_id, SEXP r_reuse_ref) {
     Rf_error("id is out of bounds");
   }
   bool reuse_ref = scalar_logical(r_reuse_ref, "reuse_ref");
-  unpack_data_t *obj = unpack_data_create_rdsi(rdsi);
+  unpack_data_t *obj = unpack_data_create_rdsi(rdsi, false);
 
   int id_attr = index_find_attributes(obj->index, id);
   if (id_attr == NA_INTEGER) {
@@ -37,7 +37,7 @@ SEXP r_unpack_pick_attribute(SEXP r_rdsi, SEXP r_name, SEXP r_id,
     Rf_error("id is out of bounds");
   }
   bool reuse_ref = scalar_logical(r_reuse_ref, "reuse_ref");
-  unpack_data_t *obj = unpack_data_create_rdsi(rdsi);
+  unpack_data_t *obj = unpack_data_create_rdsi(rdsi, false);
   const char * name = scalar_character(r_name, "name");
 
   int id_attr = index_search_attribute(obj, id, name);
@@ -64,7 +64,7 @@ SEXP r_unpack_pick_class(SEXP r_rdsi, SEXP r_id, SEXP r_reuse_ref) {
     Rf_error("id is out of bounds");
   }
   bool reuse_ref = scalar_logical(r_reuse_ref, "reuse_ref");
-  unpack_data_t *obj = unpack_data_create_rdsi(rdsi);
+  unpack_data_t *obj = unpack_data_create_rdsi(rdsi, false);
   int id_attr = index_search_attribute(obj, id, "class");
   if (id_attr == NA_INTEGER) {
     return mkString(to_typeof(rdsi->index->objects[id].type, "UNKNOWN"));
@@ -89,7 +89,7 @@ SEXP r_unpack_pick_dim(SEXP r_rdsi, SEXP r_id, SEXP r_reuse_ref) {
     Rf_error("id is out of bounds");
   }
   bool reuse_ref = scalar_logical(r_reuse_ref, "reuse_ref");
-  unpack_data_t *obj = unpack_data_create_rdsi(rdsi);
+  unpack_data_t *obj = unpack_data_create_rdsi(rdsi, false);
   return unpack_pick_dim(obj, id, reuse_ref, r_rdsi);
 }
 

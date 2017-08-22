@@ -43,7 +43,9 @@ SEXP unpack_read_bcode(unpack_data_t *obj, sexp_info_t *info);
 void unpack_add_attributes(SEXP s, sexp_info_t *info, unpack_data_t *obj);
 void unpack_flags(int flags, sexp_info_t * info);
 
-unpack_data_t * unpack_data_create(const data_t * data, R_xlen_t len);
+unpack_data_t * unpack_data_create(const data_t * data, R_xlen_t len,
+                                   bool persist);
+
 unpack_data_t * unpack_data_create_r(SEXP r_x);
 const data_t * unpack_target_data(SEXP r_x);
 

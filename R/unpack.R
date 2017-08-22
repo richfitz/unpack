@@ -100,3 +100,7 @@ unpack_pick_dim <- function(rdsi, id = 0L, reuse_ref = FALSE) {
 to_sexptype <- function(x) {
   .Call(Cto_sexptype, x)
 }
+
+unpack_df_create <- function(rdsi, id = 0L) {
+  .Call(Cunpack_df_create, rdsi, id)
+}

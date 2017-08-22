@@ -77,7 +77,7 @@ SEXP r_unpack_extract(SEXP r_rdsi, SEXP r_id, SEXP r_reuse_ref) {
   size_t id = scalar_size(r_id, "id");
   bool reuse_ref = scalar_logical(r_reuse_ref, "reuse_ref");
 
-  unpack_data_t *obj = unpack_data_create_rdsi(rdsi);
+  unpack_data_t *obj = unpack_data_create_rdsi(rdsi, false);
   if (id > (size_t)obj->index->len - 1)  {
     Rf_error("id is out of bounds (%d / %d)", id, obj->index->len - 1);
   }

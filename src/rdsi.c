@@ -80,24 +80,16 @@ const rds_index_t * get_rdsi_index(SEXP r_rdsi) {
   return rdsi->index;
 }
 
-unpack_data_t * unpack_data_create_rdsi(rdsi_t *rdsi) {
-  unpack_data_t *obj = unpack_data_create(rdsi->data, rdsi->index->len_data);
-  // TODO: this is not ideal - this drops the const qualifier on
-  // index.  This is because when obj_index is used by *index_item* it
-  // is used in a write way.
-  //
-  // The solution is to rewrite the index code, after finishing the
-  // current refactor, to *never* use obj->index and instead use a
-  // third argument that is the index that we are building as the
-  // target.  that will be much simpler to work with and then we can
-  // keep everything nice and simple.
+unpack_data_t * unpack_data_create_rdsi(rdsi_t *rdsi, bool persist) {
+  unpack_data_t *obj = unpack_data_create(rdsi->data, rdsi->index->len_data,
+                                          persist);
   obj->index = rdsi->index;
   return obj;
 }
 
 static void r_rdsi_finalize(SEXP r_rdsi) {
   rdsi_t * rdsi = get_rdsi(r_rdsi, false);
-  if (rdsi == NULL) {
+  if (rdsi != NULL) {
     // NOTE: const cast for index->objects here, required in order to
     // free the const pointer
     void *objects = (void*) rdsi->index->objects;

@@ -458,8 +458,14 @@ void unpack_flags(int flags, sexp_info_t *info) {
 }
 
 // Prep work
-unpack_data_t * unpack_data_create(const data_t * data, R_xlen_t len) {
-  unpack_data_t * obj = (unpack_data_t *)R_alloc(1, sizeof(unpack_data_t));
+unpack_data_t * unpack_data_create(const data_t * data, R_xlen_t len,
+                                   bool persist) {
+  unpack_data_t * obj;
+  if (persist) {
+    obj = (unpack_data_t *)R_alloc(1, sizeof(unpack_data_t));
+  } else {
+    obj = (unpack_data_t *)Calloc(1, unpack_data_t);
+  }
   // These all start with safe values:
   obj->ref_objects = R_NilValue;
   obj->index = NULL;
@@ -473,7 +479,7 @@ unpack_data_t * unpack_data_create_r(SEXP r_x) {
   if (TYPEOF(r_x) != RAWSXP) {
     Rf_error("Expected a raw string");
   }
-  return unpack_data_create(unpack_target_data(r_x), XLENGTH(r_x));
+  return unpack_data_create(unpack_target_data(r_x), XLENGTH(r_x), false);
 }
 
 const data_t * unpack_target_data(SEXP r_x) {
@@ -485,6 +491,8 @@ const data_t * unpack_target_data(SEXP r_x) {
   return RAW(r_x);
 }
 
+// TODO: this is not needed where we have an index - in those cases we
+// should use the values there perhaps?
 void unpack_prepare(const data_t *data, R_xlen_t len, unpack_data_t *obj) {
   obj->buffer = buffer_create(data, len);
   unpack_check_format(obj);

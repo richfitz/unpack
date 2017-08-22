@@ -13,4 +13,4 @@ SEXP rdsi_create(SEXP r_data, const rds_index_t * index);
 rdsi_t * get_rdsi(SEXP r_ptr, bool closed_error);
 const rds_index_t * get_rdsi_index(SEXP r_ptr);
 
-unpack_data_t * unpack_data_create_rdsi(rdsi_t *rdsi);
+unpack_data_t * unpack_data_create_rdsi(rdsi_t *rdsi, bool persist);

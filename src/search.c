@@ -12,7 +12,7 @@ SEXP r_index_search_attribute(SEXP r_rdsi, SEXP r_id, SEXP r_name) {
   }
   const char *name = scalar_character(r_name, "name");
 
-  unpack_data_t *obj = unpack_data_create_rdsi(rdsi);
+  unpack_data_t *obj = unpack_data_create_rdsi(rdsi, false);
   return ScalarInteger(index_search_attribute(obj, id, name));
 }
 
@@ -24,7 +24,7 @@ SEXP r_index_search_character(SEXP r_rdsi, SEXP r_id, SEXP r_str) {
   }
   const char *str = scalar_character(r_str, "str");
 
-  unpack_data_t *obj = unpack_data_create_rdsi(rdsi);
+  unpack_data_t *obj = unpack_data_create_rdsi(rdsi, false);
   return ScalarInteger(index_search_character(obj, id, str));
 }
 
@@ -36,7 +36,7 @@ SEXP r_index_search_inherits(SEXP r_rdsi, SEXP r_id, SEXP r_what) {
   }
   const char * what = scalar_character(r_what, "what");
 
-  unpack_data_t *obj = unpack_data_create_rdsi(rdsi);
+  unpack_data_t *obj = unpack_data_create_rdsi(rdsi, false);
   return ScalarLogical(index_search_inherits(obj, id, what));
 }
 

@@ -7,6 +7,7 @@
 #include "search.h"
 #include "pick.h"
 #include "xdr.h"
+#include "unpack_df.h"
 
 #include <R_ext/Rdynload.h>
 #include <Rversion.h>
@@ -56,6 +57,9 @@ static const R_CallMethodDef call_methods[] = {
   {"Cxdr_read_int",                (DL_FUNC) &r_xdr_read_int,              1},
   {"Cxdr_read_double",             (DL_FUNC) &r_xdr_read_double,           1},
   {"Cxdr_read_complex",            (DL_FUNC) &r_xdr_read_complex,          1},
+
+  // df
+  {"Cunpack_df_create",            (DL_FUNC) &r_unpack_df_create,          2},
 
   {NULL,                           NULL,                                   0}
 };
