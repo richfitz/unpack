@@ -7,3 +7,5 @@ int index_search_character(unpack_data_t * obj, size_t id, const char *str);
 bool index_compare_charsxp(unpack_data_t * obj, size_t id,
                            const char *str_data, size_t str_length,
                            size_t str_data_length);
+bool index_compare_charsxp_str(unpack_data_t * obj, size_t id,
+                               const char *str);

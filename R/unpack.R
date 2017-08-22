@@ -83,6 +83,12 @@ unpack_pick_names <- function(rdsi, id = 0L, reuse_ref = FALSE) {
 unpack_pick_typeof <- function(rdsi, id = 0L) {
   .Call(Cunpack_pick_typeof, rdsi, id)
 }
+unpack_pick_length <- function(rdsi, id = 0L) {
+  .Call(Cunpack_pick_length, rdsi, id)
+}
+unpack_pick_dim <- function(rdsi, id = 0L, reuse_ref = FALSE) {
+  .Call(Cunpack_pick_dim, rdsi, id, reuse_ref)
+}
 
 ## helpers
 to_sexptype <- function(x) {

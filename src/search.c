@@ -105,3 +105,14 @@ bool index_compare_charsxp(unpack_data_t * obj, size_t id,
   }
   return same;
 }
+
+bool index_compare_charsxp_str(unpack_data_t * obj, size_t id,
+                               const char *str) {
+  const size_t str_len = strlen(str);
+  const char *str_data;
+  const size_t str_data_len = unpack_write_string(obj, str, str_len, &str_data);
+  const data_t* str_cmp = buffer_at(obj->buffer,
+                                    obj->index->objects[id].start_data);
+  bool same = memcmp(str_cmp, str_data, str_data_len) == 0;
+  return same;
+}
