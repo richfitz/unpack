@@ -47,8 +47,11 @@ index_find_car <- function(rdsi, id) {
 index_find_cdr <- function(rdsi, id) {
   .Call(Cindex_find_cdr, rdsi, id)
 }
-index_find_id <- function(rdsi, at, start_id = 0L) {
-  .Call(Cindex_find_id, rdsi, at, start_id)
+index_find_id_linear <- function(rdsi, at, start_id = 0L) {
+  .Call(Cindex_find_id_linear, rdsi, at, start_id)
+}
+index_find_id_bisect <- function(rdsi, at, start_id = 0L) {
+  .Call(Cindex_find_id_bisect, rdsi, at, start_id)
 }
 index_find_attributes <- function(rdsi, id) {
   .Call(Cindex_find_attributes, rdsi, id)

@@ -31,3 +31,26 @@ test_that("find_attributes", {
 
   expect_identical(index_find_attributes(rdsi, 1L), NA_integer_)
 })
+
+## Just need to get some decent testing in here.
+test_that("find id", {
+  rdsi <- rdsi_build(serialize_binary(mtcars))
+  idx <- rdsi_get_index_matrix(rdsi)
+
+  at <- idx[, "start_object"][10]
+  i <- index_find_id_bisect(rdsi, at, 0L)
+
+  at <- idx[1, "start_attr"]
+  i <- index_find_id_bisect(rdsi, at, 0L)
+
+  at2 <- idx[idx[, "parent"] == i, "start_object"]
+  j1 <- vapply(at2, index_find_id_linear, integer(1), rdsi = rdsi, start_id = i)
+  j2 <- vapply(at2, index_find_id_bisect, integer(1), rdsi = rdsi, start_id = i)
+  expect_identical(j1, j2)
+
+  for (el in j1) {
+    at3 <- idx[idx[, "parent"] == el, "start_object"]
+    expect_identical(index_find_id_bisect(rdsi, at3[[1]], el),
+                     index_find_id_linear(rdsi, at3[[1]], el))
+  }
+})

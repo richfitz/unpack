@@ -46,3 +46,10 @@ void * check_extptr_valid(SEXP r_ptr, const char * name, bool closed_error) {
   }
   return data;
 }
+
+size_t min2(size_t a, size_t b) {
+  return a < b ? a : b;
+}
+size_t max2(size_t a, size_t b) {
+  return a > b ? a : b;
+}

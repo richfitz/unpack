@@ -32,7 +32,8 @@ static const R_CallMethodDef call_methods[] = {
   {"Cindex_find_car",              (DL_FUNC) &r_index_find_car,            2},
   {"Cindex_find_cdr",              (DL_FUNC) &r_index_find_cdr,            2},
   {"Cindex_find_attributes",       (DL_FUNC) &r_index_find_attributes,     2},
-  {"Cindex_find_id",               (DL_FUNC) &r_index_find_id,             3},
+  {"Cindex_find_id_linear",        (DL_FUNC) &r_index_find_id_linear,      3},
+  {"Cindex_find_id_bisect",        (DL_FUNC) &r_index_find_id_bisect,      3},
 
   // search for things
   {"Cindex_search_attribute",      (DL_FUNC) &r_index_search_attribute,    3},
