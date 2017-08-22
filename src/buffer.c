@@ -23,8 +23,8 @@ void buffer_move_to(buffer_t *buffer, R_xlen_t pos) {
   buffer->pos = pos;
 }
 
-const data_t * buffer_at(buffer_t *buffer, R_xlen_t pos) {
-  if (pos > buffer->len) {
+const data_t * buffer_at(buffer_t *buffer, R_xlen_t pos, size_t len) {
+  if (pos + (R_xlen_t)len > buffer->len) {
     Rf_error("buffer overflow");
   }
   return buffer->data + pos;

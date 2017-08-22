@@ -126,7 +126,8 @@ SEXP unpack_pick_dim_df(unpack_data_t *obj, size_t id) {
   const sexp_info_t* info = obj->index->objects + id_row_names;
   dim[0] = 0;
   if (info->type == INTSXP && info->length == 2) {
-    int * data = (int*)buffer_at(obj->buffer, info->start_data);
+    int * data = (int*)buffer_at(obj->buffer, info->start_data,
+                                 2 * sizeof(int));
     dim[0] = abs(data[1]);
   } else if (info->type != NILVALUE_SXP) {
     dim[0] = info->length;

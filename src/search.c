@@ -91,6 +91,7 @@ int index_search_character(unpack_data_t * obj, size_t id, const char *str) {
   return NA_INTEGER;
 }
 
+// TODO: length/len consistency
 bool index_compare_charsxp(unpack_data_t * obj, size_t id,
                            const char *str_data, size_t str_length,
                            size_t str_data_length) {
@@ -100,7 +101,8 @@ bool index_compare_charsxp(unpack_data_t * obj, size_t id,
     // TODO: in the case of ascii, check that start_attr - start_data
     // is the same as str_data_length before doing the memcpy.  We
     // could also just use that length entirely I think.
-    const data_t* str_cmp = buffer_at(obj->buffer, info_char->start_data);
+    const data_t* str_cmp = buffer_at(obj->buffer, info_char->start_data,
+                                      str_data_length);
     same = memcmp(str_cmp, str_data, str_data_length) == 0;
   }
   return same;
@@ -112,7 +114,8 @@ bool index_compare_charsxp_str(unpack_data_t * obj, size_t id,
   const char *str_data;
   const size_t str_data_len = unpack_write_string(obj, str, str_len, &str_data);
   const data_t* str_cmp = buffer_at(obj->buffer,
-                                    obj->index->objects[id].start_data);
+                                    obj->index->objects[id].start_data,
+                                    str_data_len);
   bool same = memcmp(str_cmp, str_data, str_data_len) == 0;
   return same;
 }
